@@ -1,0 +1,10 @@
+[package]
+name = "MORK"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = {version = "0.31.1",default-features = false, features = ["default_fonts","glow","wayland","x11"]}
+plotters = {version = "0.3.7", default-features = false, features = ["svg_backend","full_palette","line_series"]}
+serde = "1.0.219"
+serde_cbor = "0.11.2"
