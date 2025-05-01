@@ -78,25 +78,23 @@ pub fn scc(graph: &Vec<Vec<bool>>) -> Vec<Vec<usize>> {
 }
 
 pub fn contraction(graph: &Vec<Vec<bool>>, partition: &Vec<Vec<usize>>) -> Vec<Vec<bool>> {
-	let s1 = graph.len();
-	let s2 = partition.len();
-	let inverse: Vec<usize> = (0..s1)
-		.map(|j| {
-			(0..s2)
-				.filter(|j1| partition[*j1].contains(&j))
-				.next()
-				.unwrap()
-		})
-		.collect(); // maps each node to its partition
-	let mut contracted_graph = vec![vec![false; s2]; s2];
-	let mut p1;
-	let mut p2;
-	for j1 in 0..s1 {
-		for j2 in 0..s1 {
-			p1 = inverse[j1];
-			p2 = inverse[j2];
-			if p1 != p2 && graph[j1][j2] {
-				contracted_graph[p1][p2] = true;
+	let s = graph.len();
+	let p = partition.len();
+	let mut inverse_map: Vec<usize> = vec![0;s];
+	for i in 0..p {
+		for &j in &partition[i] {
+			inverse_map[j]=i;
+		}
+	}
+	let mut contracted_graph = vec![vec![false; p]; p];
+	let mut partition1;
+	let mut partition2;
+	for j1 in 0..s {
+		for j2 in 0..s {
+			partition1 = inverse_map[j1];
+			partition2 = inverse_map[j2];
+			if partition1 != partition2 && graph[j1][j2] {
+				contracted_graph[partition1][partition2] = true;
 			}
 		}
 	}
@@ -111,8 +109,8 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
 	let mut order: Vec<usize> = Vec::new();
 	while let Some(node) = S.pop() {
 		order.push(node);
-		for k in 0..s {
-			dag[k][node] = false;
+		for j in 0..s {
+			dag[j][node] = false;
 		}
 		S = (0..dag.len())
 			.filter(|&j| !order.contains(&j) && !(dag[j].contains(&true)))

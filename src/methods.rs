@@ -25,16 +25,16 @@ pub enum Task {
 pub struct GMORK {
 	pub nodes: Vec<f64>,
 	pub main_weights: Vec<Vec<Vec<f64>>>,
-	main_weights_function: fn(u32) -> Vec<Vec<f64>>,
+	main_weights_f: fn(u32) -> Vec<Vec<f64>>,
 	pub secondary_weights: Vec<Vec<Vec<f64>>>,
-	secondary_weights_function: fn(u32) -> Vec<Vec<f64>>,
+	secondary_weights_f: fn(u32) -> Vec<Vec<f64>>,
 	pub queue: Vec<Task>,
 	pub s: usize,
-	pub current_length: usize,
-	pub cyclic_derivative: Vec<Vec<bool>>, // [N-1][j]
+	pub length: usize,
+	pub cyclic_derivatives: Vec<Vec<bool>>, // [N-1][j]
 	pub factorial: Vec<f64>,
-	pub h: f64,
 	pub h_powers: Vec<f64>,
+	pub h: f64,
 	pub error_fraction: f64,
 	pub min_iter: u32,
 	pub max_iter: u32,
@@ -42,32 +42,32 @@ pub struct GMORK {
 
 impl GMORK {
 	pub fn new(
-		weight_function: fn(u32) -> Vec<Vec<f64>>,
-		secondary_weight_function: fn(u32) -> Vec<Vec<f64>>,
+		main_weights_function: fn(u32) -> Vec<Vec<f64>>,
+		secondary_weights_function: fn(u32) -> Vec<Vec<f64>>,
 		nodes: Vec<f64>,
-		weight_graph: Vec<Vec<bool>>,
+		maximum_weight_graph: Vec<Vec<bool>>,
 	) -> Self {
-		let SCC = scc(&weight_graph);
-		let queue: Vec<Task> = topological_sort(&contraction(&weight_graph, &SCC))
+		let SCC = scc(&maximum_weight_graph);
+		let queue: Vec<Task> = topological_sort(&contraction(&maximum_weight_graph, &SCC))
 			.into_iter()
 			.map(|i| {
-				if SCC[i].len() > 1 || weight_graph[SCC[i][0]][SCC[i][0]] {
+				if SCC[i].len() > 1 || maximum_weight_graph[SCC[i][0]][SCC[i][0]] {
 					Task::Implicit(SCC[i].clone())
 				} else {
 					Task::Explicit(SCC[i][0])
 				}
 			})
 			.collect();
-		let s = nodes.len() - 1;
-		let weights = vec![weight_function(1)];
-		let secondary_weights = vec![secondary_weight_function(1)];
-		let mut cycle_derivative: Vec<Vec<bool>> = vec![vec![false; s]];
+		let main_weights = vec![main_weights_function(1)];
+		let s = main_weights[0].len() - 1;
+		let secondary_weights = vec![secondary_weights_function(1)];
+		let mut cyclic_derivatives: Vec<Vec<bool>> = vec![vec![false; s]];
 		for task in queue.iter() {
 			if let Task::Implicit(J) = task {
 				for &j in J {
 					for &j1 in J {
-						if weights[0][j][j1] != 0. {
-							cycle_derivative[0][j] = true;
+						if main_weights[0][j][j1] != 0. {
+							cyclic_derivatives[0][j] = true;
 							break;
 						}
 					}
@@ -76,17 +76,17 @@ impl GMORK {
 		}
 		GMORK {
 			s,
-			current_length: 1,
+			length: 1,
 			nodes,
-			main_weights: weights,
-			main_weights_function: weight_function,
+			main_weights,
+			main_weights_f: main_weights_function,
 			secondary_weights,
-			secondary_weights_function: secondary_weight_function,
+			secondary_weights_f: secondary_weights_function,
 			factorial: vec![1., 1.],
 			h: 0.,
 			h_powers: vec![1., 0.],
 			queue,
-			cyclic_derivative: cycle_derivative,
+			cyclic_derivatives,
 			error_fraction: ERROR_FRACTION,
 			min_iter: MIN_ITER,
 			max_iter: MAX_ITER,
@@ -94,26 +94,26 @@ impl GMORK {
 	}
 
 	pub fn set_minimum_length(&mut self, n: usize) {
-		if self.current_length >= n {
+		if self.length >= n {
 			return;
 		}
-		self.factorial.extend(vec![0.; n - self.current_length]);
+		self.factorial.extend(vec![0.; n - self.length]);
 		self.main_weights
-			.extend((self.current_length..n).map(|N| (self.main_weights_function)(N as u32 + 1)));
+			.extend((self.length..n).map(|N| (self.main_weights_f)(N as u32 + 1)));
 		self.secondary_weights
-			.extend((self.current_length..n).map(|N| (self.secondary_weights_function)(N as u32 + 1)));
+			.extend((self.length..n).map(|N| (self.secondary_weights_f)(N as u32 + 1)));
 		self.h_powers
-			.extend((self.current_length..n).map(|N| self.h.powi(N as i32 + 1)));
-		self.cyclic_derivative
-			.extend((self.current_length..n).map(|_| vec![false; self.s]));
-		for N in self.current_length..n {
+			.extend((self.length..n).map(|N| self.h.powi(N as i32 + 1)));
+		self.cyclic_derivatives
+			.extend((self.length..n).map(|_| vec![false; self.s]));
+		for N in self.length..n {
 			self.factorial[N + 1] = self.factorial[N] * (N as f64 + 1.);
 			for task in self.queue.iter() {
 				if let Task::Implicit(J) = task {
 					for &j in J {
 						for &j1 in J {
 							if self.main_weights[N][j][j1] != 0. {
-								self.cyclic_derivative[N][j] = true;
+								self.cyclic_derivatives[N][j] = true;
 								break;
 							}
 						}
@@ -121,13 +121,24 @@ impl GMORK {
 				}
 			}
 		}
-		self.current_length = n;
+		self.length = n;
 	}
 
-	pub fn set_step_size(&mut self, h: f64) {
-		self.h = h;
-		for N in 1..=self.current_length {
-			self.h_powers[N] = h.powi(N as i32)
+	pub fn compute_explicit(&self, J: &Vec<usize>,j: usize, y: &mut Vec<Vec<Vec<f64>>>, y0: &Vec<Vec<f64>>, F: &Vec<Vec<f64>>) {
+		let mut sum;
+		for k in 0..y0.len() {
+			for N in 0..y0[k].len() {
+				for N1 in 1..=N {
+					y[j][k][N] += self.secondary_weights[N][N1][j]
+						* self.h_powers[N1]
+						* y0[k][N - N1]
+				}
+				sum = 0.;
+				for &j1 in J {
+					sum += self.main_weights[N][j][j1] * F[j1][k];
+				}
+				y[j][k][N] += self.h_powers[N + 1] / self.factorial[N + 1] * sum;
+			}
 		}
 	}
 }
@@ -140,11 +151,11 @@ impl Solver for GMORK {
 		f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64>,
 		y0: &Vec<Vec<f64>>,
 	) -> Vec<Vec<f64>> {
-		if h == 0. {
-			return y0.clone();
-		}
 		if h != self.h {
-			self.set_step_size(h);
+			self.h = h;
+			for N in 1..=self.length {
+				self.h_powers[N] = h.powi(N as i32)
+			}
 		}
 		let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| y0[0].clone()).collect();
 		let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
@@ -161,7 +172,7 @@ impl Solver for GMORK {
 		threshold *= self.error_fraction;
 		// verify the length of the method is enough
 		for k in 0..y0.len() {
-			if y0[k].len() > self.current_length {
+			if y0[k].len() > self.length {
 				self.set_minimum_length(y0[k].len());
 			}
 		}
@@ -230,7 +241,7 @@ impl Solver for GMORK {
 						// add evaluations and calculate norm difference
 						for &j in J {
 							for k in 0..y0.len() {
-								for N in (0..y0[k].len()).filter(|&N| self.cyclic_derivative[N][j]) {
+								for N in (0..y0[k].len()).filter(|&N| self.cyclic_derivatives[N][j]) {
 									sum = 0.;
 									for &j1 in J {
 										sum += self.main_weights[N][j][j1] * F[j1][k];
@@ -348,12 +359,6 @@ impl NDMORK {
 		self.current_length = n;
 	}
 
-	pub fn set_step_size(&mut self, h: f64) {
-		self.h = h;
-		for N in 1..=self.current_length {
-			self.h_powers[N] = h.powi(N as i32)
-		}
-	}
 }
 
 impl Solver for NDMORK {
@@ -368,7 +373,10 @@ impl Solver for NDMORK {
 			return y0.clone();
 		}
 		if h != self.h {
-			self.set_step_size(h);
+			self.h = h;
+			for N in 1..=self.current_length {
+				self.h_powers[N] = h.powi(N as i32)
+			}
 		}
 		let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| y0[0].clone()).collect();
 		let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
