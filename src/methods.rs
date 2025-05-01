@@ -713,6 +713,24 @@ impl RK {
             max_tries: MAX_ITER,
         }
     }
+
+	pub fn add_known_part(&self,J:&Vec<usize>, j: usize, y : &mut Vec<Vec<Vec<f64>>>, y0: &Vec<Vec<f64>>,F : &Vec<Vec<f64>>, h: f64) {
+		let mut sum;
+		for k in 0..y0.len() {
+			for N in (1..y0[k].len()).rev() {
+				sum = 0.;
+				for &j1 in J {
+					sum += self.weights[j][j1] * y[j1][k][N - 1];
+				}
+				y[j][k][N] += h * sum;
+			}
+			sum = 0.;
+			for &j1 in J {
+				sum += self.weights[j][j1] * F[j1][k];
+			}
+			y[j][k][0] += h * sum;
+		}
+	}
 }
 
 impl Solver for RK {
@@ -728,7 +746,6 @@ impl Solver for RK {
         }
         let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| y0[0].clone()).collect();
         let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
-        let mut sum;
         // calculate difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
         for k in 0..y0.len() {
@@ -743,25 +760,17 @@ impl Solver for RK {
             match task {
                 Task::Explicit(j) => {
                     let j = *j;
-                    for k in 0..y0.len() {
-                        sum = 0.;
-                        for j1 in 0..self.s {
-                            sum += self.weights[j][j1] * F[j1][k];
-                        }
-                        y[j][k][0] += h * sum;
-                        for N in 1..y0[k].len() {
-                            sum = 0.;
-                            for j1 in 0..self.s {
-                                sum += self.weights[j][j1] * y[j1][k][N - 1];
-                            }
-                            y[j][k][N] += h * sum;
-                        }
-                    }
+					self.add_known_part(&(0..self.s).collect(), j, &mut y, y0, &F, h);
                     if j != self.s {
                         F[j] = f(t + self.nodes[j] * h, &y[j]);
                     }
                 }
                 Task::Implicit(J) => {
+                    let comp_J: &Vec<usize> = &(0..self.s).filter(|j| !J.contains(j)).collect();
+                    // calculate constant terms
+                    for &j in J {
+                        self.add_known_part(comp_J, j, &mut y, y0, &F,h);
+                    }
                     let constant = y.clone();
                     // Picard iterations
                     let mut iter_count = 0;
@@ -785,20 +794,7 @@ impl Solver for RK {
                         y = constant.clone();
                         // add evaluations and calculate norm difference
                         for &j in J {
-                            for k in 0..y0.len() {
-                                for N in (1..y0[k].len()).rev() {
-                                    sum = 0.;
-                                    for j1 in 0..self.s {
-                                        sum += self.weights[j][j1] * y[j1][k][N - 1];
-                                    }
-                                    y[j][k][N] += h * sum;
-                                }
-                                sum = 0.;
-                                for j1 in 0..self.s {
-                                    sum += self.weights[j][j1] * F[j1][k];
-                                }
-                                y[j][k][0] += h * sum;
-                            }
+							self.add_known_part(J, j, &mut y, y0, &F, h);
                         }
                     }
                 }
