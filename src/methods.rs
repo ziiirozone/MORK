@@ -671,8 +671,8 @@ pub struct RK {
     pub weights: Vec<Vec<f64>>,
     pub queue: Vec<Task>,
     pub error_fraction: f64,
-    pub min_tries: u32,
-    pub max_tries: u32,
+    pub min_iter: u32,
+    pub max_iter: u32,
 }
 
 impl RK {
@@ -709,26 +709,26 @@ impl RK {
             weights,
             queue,
             error_fraction: ERROR_FRACTION,
-            min_tries: MIN_ITER,
-            max_tries: MAX_ITER,
+            min_iter: MIN_ITER,
+            max_iter: MAX_ITER,
         }
     }
 
 	pub fn add_known_part(&self,J:&Vec<usize>, j: usize, y : &mut Vec<Vec<Vec<f64>>>, y0: &Vec<Vec<f64>>,F : &Vec<Vec<f64>>, h: f64) {
 		let mut sum;
 		for k in 0..y0.len() {
-			for N in (1..y0[k].len()).rev() {
+			sum = 0.;
+			for &j1 in J {
+				sum += self.weights[j][j1] * F[j1][k];
+			}
+			y[j][k][0] += h * sum;
+			for N in 1..y0[k].len() {
 				sum = 0.;
 				for &j1 in J {
 					sum += self.weights[j][j1] * y[j1][k][N - 1];
 				}
 				y[j][k][N] += h * sum;
 			}
-			sum = 0.;
-			for &j1 in J {
-				sum += self.weights[j][j1] * F[j1][k];
-			}
-			y[j][k][0] += h * sum;
 		}
 	}
 }
@@ -776,12 +776,13 @@ impl Solver for RK {
                     let mut iter_count = 0;
                     let mut d = threshold + 1.;
                     let mut f_cache;
-                    while iter_count < self.min_tries
-                        || (d > threshold && iter_count < self.max_tries)
+                    let mut sum;
+                    while iter_count < self.min_iter
+                        || (d > threshold && iter_count < self.max_iter)
                     {
                         iter_count += 1;
                         // update evaluations and calculate difference
-                        d = 0.;
+                        d = 0.; 
                         for &j in J {
                             f_cache = f(t + self.nodes[j] * h, &y[j]);
                             // calculate difference for threshold
@@ -790,11 +791,22 @@ impl Solver for RK {
                             }
                             F[j] = f_cache;
                         }
-                        // constant part
-                        y = constant.clone();
-                        // add evaluations and calculate norm difference
+                        // add evaluations
                         for &j in J {
-							self.add_known_part(J, j, &mut y, y0, &F, h);
+                            for k in 0..y0.len() {
+                                for N in (1..y0[k].len()).rev() {
+                                    sum = 0.;
+                                    for &j1 in J {
+                                        sum += self.weights[j][j1] * y[j1][k][N - 1];
+                                    }
+                                    y[j][k][N] = constant[j][k][N] + h * sum;
+                                }
+                                sum = 0.;
+                                for &j1 in J {
+                                    sum += self.weights[j][j1] * F[j1][k];
+                                }
+                                y[j][k][0] = constant[j][k][0] + h * sum;
+                            }
                         }
                     }
                 }

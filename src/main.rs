@@ -33,6 +33,8 @@ fn main() {
         ("IRK3_1", Box::new(IRK3_1())),
         ("IRK4", Box::new(IRK4())),
     ];
+    let solver = IRK3_2();
+    println!("{:?}",solver.queue);
     let experiments = vec![
         ("sin - cos", IVPType::Solved(ivp_sin_cos()), vec!["n"]),
         ("exponential", IVPType::Solved(ivp_exp()), vec!["n"]),
