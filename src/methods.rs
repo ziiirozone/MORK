@@ -18,7 +18,7 @@ pub trait Solver {
 
 #[derive(Debug, Clone)]
 pub enum Task {
-    Implicit(Vec<usize>),
+    Implicit(Vec<usize>,Vec<usize>), // J and [|1,s|] \ J
     Explicit(usize),
 }
 
@@ -47,23 +47,25 @@ impl GMORK {
         nodes: Vec<f64>,
         maximum_weight_graph: Vec<Vec<bool>>,
     ) -> Self {
+        let main_weights = vec![main_weights_function(1)];
+        let secondary_weights = vec![secondary_weights_function(1)];
+        let s = main_weights[0].len() - 1;
         let SCC = scc(&maximum_weight_graph);
         let queue: Vec<Task> = topological_sort(&contraction(&maximum_weight_graph, &SCC))
             .into_iter()
             .map(|i| {
                 if SCC[i].len() > 1 || maximum_weight_graph[SCC[i][0]][SCC[i][0]] {
-                    Task::Implicit(SCC[i].clone())
+                    let J = SCC[i].clone();
+                    let comp_J = (0..s).filter(|j| !J.contains(j)).collect();
+                    Task::Implicit(J,comp_J)
                 } else {
                     Task::Explicit(SCC[i][0])
                 }
             })
             .collect();
-        let main_weights = vec![main_weights_function(1)];
-        let s = main_weights[0].len() - 1;
-        let secondary_weights = vec![secondary_weights_function(1)];
         let mut cyclic_derivatives: Vec<Vec<bool>> = vec![vec![false; s]];
         for task in queue.iter() {
-            if let Task::Implicit(J) = task {
+            if let Task::Implicit(J,_) = task {
                 for &j in J {
                     for &j1 in J {
                         if main_weights[0][j][j1] != 0. {
@@ -109,7 +111,7 @@ impl GMORK {
         for N in self.length..n {
             self.factorial[N + 1] = self.factorial[N] * (N as f64 + 1.);
             for task in self.queue.iter() {
-                if let Task::Implicit(J) = task {
+                if let Task::Implicit(J,_) = task {
                     for &j in J {
                         for &j1 in J {
                             if self.main_weights[N][j][j1] != 0. {
@@ -191,8 +193,7 @@ impl Solver for GMORK {
                         F[j] = f(t + self.nodes[j] * h, &y[j]);
                     }
                 }
-                Task::Implicit(J) => {
-                    let comp_J: &Vec<usize> = &(0..self.s).filter(|j| !J.contains(j)).collect();
+                Task::Implicit(J,comp_J) => {
                     // calculate constant terms
                     for &j in J {
                         self.add_known_part(comp_J, j, &mut y, y0, &F);
@@ -262,22 +263,24 @@ impl NDMORK {
         nodes: Vec<f64>,
         maximum_weight_graph: Vec<Vec<bool>>,
     ) -> Self {
+        let s = nodes.len() - 1;
+        let weights = vec![weights_function(1)];
         let SCC = scc(&maximum_weight_graph);
         let queue: Vec<Task> = topological_sort(&contraction(&maximum_weight_graph, &SCC))
             .into_iter()
             .map(|i| {
                 if SCC[i].len() > 1 || maximum_weight_graph[SCC[i][0]][SCC[i][0]] {
-                    Task::Implicit(SCC[i].clone())
+                    let J = SCC[i].clone();
+                    let comp_J = (0..s).filter(|j| !J.contains(j)).collect();
+                    Task::Implicit(J,comp_J)
                 } else {
                     Task::Explicit(SCC[i][0])
                 }
             })
             .collect();
-        let s = nodes.len() - 1;
-        let weights = vec![weights_function(1)];
         let mut cycle_derivative: Vec<Vec<bool>> = vec![vec![false; s]];
         for task in queue.iter() {
-            if let Task::Implicit(J) = task {
+            if let Task::Implicit(J,_) = task {
                 for &j in J {
                     for &j1 in J {
                         if weights[0][j][j1] != 0. {
@@ -320,7 +323,7 @@ impl NDMORK {
         for N in self.current_length..n {
             self.factorial[N + 1] = self.factorial[N] * (N as f64 + 1.);
             for task in self.queue.iter() {
-                if let Task::Implicit(J) = task {
+                if let Task::Implicit(J,_) = task {
                     for &j in J {
                         for &j1 in J {
                             if self.weights[N][j][j1] != 0. {
@@ -385,7 +388,6 @@ impl Solver for NDMORK {
         }
         let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| y0[0].clone()).collect();
         let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
-        let mut sum;
         // calculate difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
         for k in 0..y0.len() {
@@ -411,8 +413,7 @@ impl Solver for NDMORK {
                         F[j] = f(t + self.nodes[j] * h, &y[j]);
                     }
                 }
-                Task::Implicit(J) => {
-                    let comp_J: &Vec<usize> = &(0..self.s).filter(|j| !J.contains(j)).collect();
+                Task::Implicit(J,comp_J) => {
                     // calculate constant terms
                     for &j in J {
                         self.add_known_part(comp_J, j, &mut y, y0, &F);
@@ -422,6 +423,7 @@ impl Solver for NDMORK {
                     let mut iter_count = 0;
                     let mut d = threshold + 1.;
                     let mut f_cache: Vec<f64>;
+                    let mut sum;
                     while iter_count < self.min_iter
                         || (d > threshold && iter_count < self.max_iter)
                     {
@@ -436,9 +438,7 @@ impl Solver for NDMORK {
                             }
                             F[j] = f_cache;
                         }
-                        // constant part
-                        y = constant.clone();
-                        // add evaluations and calculate norm difference
+                        // add evaluations
                         for &j in J {
                             for k in 0..y0.len() {
                                 for N in (0..y0[k].len()).filter(|&N| self.cycle_derivative[N][j]) {
@@ -446,7 +446,7 @@ impl Solver for NDMORK {
                                     for &j1 in J {
                                         sum += self.weights[N][j][j1] * F[j1][k];
                                     }
-                                    y[j][k][N] +=
+                                    y[j][k][N] = constant[j][k][N] +
                                         self.h_powers[N + 1] / self.factorial[N + 1] * sum;
                                 }
                             }
@@ -510,22 +510,6 @@ pub fn INDMORK3() -> NDMORK {
 
 pub fn INDMORK3_1() -> NDMORK {
     let weight_function: fn(_) -> _ = |_N: u32| vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]];
-    let nodes = vec![0., 1., 1.];
-    let weight_graph = vec![
-        vec![false, false, false],
-        vec![true, true, false],
-        vec![true, true, false],
-    ];
-    NDMORK::new(weight_function, nodes, weight_graph)
-}
-
-pub fn INDMORK3_2() -> NDMORK {
-    let weight_function: fn(_) -> _ = |N: u32| {
-        if N == 1 {
-            return vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]];
-        }
-        vec![vec![0., 0.], vec![0., 0.], vec![0.5, 0.5]]
-    };
     let nodes = vec![0., 1., 1.];
     let weight_graph = vec![
         vec![false, false, false],
@@ -696,7 +680,9 @@ impl RK {
             .into_iter()
             .map(|i| {
                 if SCC[i].len() > 1 || weight_graph[SCC[i][0]][SCC[i][0]] {
-                    Task::Implicit(SCC[i].clone())
+                    let J = SCC[i].clone();
+                    let comp_J = (0..s).filter(|j| !J.contains(j)).collect();
+                    Task::Implicit(J,comp_J)
                 } else {
                     Task::Explicit(SCC[i][0])
                 }
@@ -765,8 +751,7 @@ impl Solver for RK {
                         F[j] = f(t + self.nodes[j] * h, &y[j]);
                     }
                 }
-                Task::Implicit(J) => {
-                    let comp_J: &Vec<usize> = &(0..self.s).filter(|j| !J.contains(j)).collect();
+                Task::Implicit(J,comp_J) => {
                     // calculate constant terms
                     for &j in J {
                         self.add_known_part(comp_J, j, &mut y, y0, &F,h);
@@ -847,12 +832,6 @@ pub fn IRK3() -> RK {
 }
 
 pub fn IRK3_1() -> RK {
-    let weights = vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]];
-    let nodes = vec![0., 1., 1.];
-    RK::new(weights, nodes)
-}
-
-pub fn IRK3_2() -> RK {
     let weights = vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]];
     let nodes = vec![0., 1., 1.];
     RK::new(weights, nodes)

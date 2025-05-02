@@ -8,6 +8,7 @@ use plotters::style::{Palette, Palette99};
 use serde_cbor::to_vec;
 use std::fs::File;
 use std::io::Write;
+use std::time::Instant;
 
 //const RENDER_PATH_WINDOWS: &str = "D:/programs/rust/MORK/src/render";
 const RENDER_PATH_LINUX: &str = "/run/media/ziii/SSD_loris/programs/rust/MORK/src/render";
@@ -277,9 +278,12 @@ impl eframe::App for ExperimentPicker {
                             .filter(|x| self.solvers_selected[x.0])
                         {
                             let mut y: Vec<Vec<Vec<f64>>> = t.iter().map(|_| y0.clone()).collect();
+                            let time = Instant::now();
                             for k in 0..q {
                                 y[k + 1] = solver.approximate(t[k], self.step_size, &f, &y[k]);
                             }
+                            let delta = time.elapsed().as_micros();
+                            println!("Time elapsed for {solver_name} : {delta} micros");
                             let y1: Vec<Vec<f64>> = y.into_iter().map(|x| extractor(&x)).collect();
                             for k in 0..y1[0].len() {
                                 let y2 = t
@@ -336,9 +340,12 @@ impl eframe::App for ExperimentPicker {
                             .filter(|x| self.solvers_selected[x.0])
                         {
                             let mut y: Vec<Vec<Vec<f64>>> = t.iter().map(|_| y0.clone()).collect();
+                            let time = Instant::now();
                             for k in 0..q {
                                 y[k + 1] = solver.approximate(t[k], self.step_size, &f, &y[k]);
                             }
+                            let delta = time.elapsed().as_micros();
+                            println!("Time elapsed for {solver_name} : {delta} micros");
                             let y1: Vec<Vec<f64>> = y.into_iter().map(|x| extractor(&x)).collect();
                             for k in 0..y1[0].len() {
                                 let y2: Vec<(f64, f64)> = t
