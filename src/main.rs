@@ -1,11 +1,8 @@
-pub mod experiment_picker;
-pub mod graph;
-pub mod ivp;
-pub mod methods;
-pub mod plot;
+pub mod experiment;
 
-use crate::experiment_picker::*;
-use crate::{ivp::*, methods::*};
+use crate::experiment::experiment_picker::*;
+use crate::experiment::ivp::*;
+use MORK::library::methods::*;
 use eframe::egui;
 
 #[allow(non_snake_case)]
@@ -64,7 +61,7 @@ fn main() {
         ),
     ];
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 640.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([600.0, 800.0]),
         vsync: false,
         ..Default::default()
     };
