@@ -37,6 +37,7 @@ pub struct ExperimentPicker {
     left_h_interval: f64,
     right_h_interval: f64,
     order_samples: u32,
+    order_iterations: u32,
     delta_t: f64,
     t0: f64,
     order_error: bool,
@@ -93,6 +94,7 @@ impl ExperimentPicker {
             left_h_interval: 0.001,
             right_h_interval: 1.,
             order_samples: 20,
+            order_iterations: 1,
             delta_t: 10.,
             t0: 0.,
             order_error: false,
@@ -152,6 +154,9 @@ impl eframe::App for ExperimentPicker {
                             .max_decimals(16)
                             .min_decimals(16),
                     );
+
+                    ui.label("number of iterations");
+                    ui.add(egui::DragValue::new(&mut self.order_iterations).max_decimals(0));
                 }
                 Goal::Plot => {
                     // select data extractor
@@ -233,8 +238,8 @@ impl eframe::App for ExperimentPicker {
                             self.order_error = true;
                         }
                         IVPType::Solved(ivp) => {
-                            let plot_path = self.path.clone() + "order.svg";
-                            let cbor_path = self.path.clone() + "order.cbor";
+                            let plot_path = self.path.clone() + "/order.svg";
+                            let cbor_path = self.path.clone() + "/order.cbor";
                             let title = format!("Order - {}", ivp_name);
                             let mut names = Vec::new();
                             let mut data: Vec<Vec<(f64, f64)>> = Vec::new();
@@ -246,7 +251,7 @@ impl eframe::App for ExperimentPicker {
                                 })
                                 .collect();
                             let solution: Vec<Vec<Vec<f64>>> =
-                                h_list.iter().map(|&h| ivp.solution(t0 + h)).collect();
+                                h_list.iter().map(|&h| ivp.solution(t0 + self.order_iterations as f64 * h)).collect();
                             let distance = &self.distances[self.distance_index].1;
                             for solver_i in (0..self.solvers_selected.len())
                                 .filter(|i| self.solvers_selected[*i])
@@ -254,9 +259,13 @@ impl eframe::App for ExperimentPicker {
                                 let temp: Vec<Vec<f64>> = h_list
                                     .iter()
                                     .enumerate()
-                                    .map(|(i, h)| {
-                                        let a =
-                                            self.solvers[solver_i].1.approximate(t0, *h, &f, &y0);
+                                    .map(|(i, &h)| {
+                                        let mut a = y0.clone();
+                                        let mut t = t0;
+                                        for _ in 0..self.order_iterations {
+                                            a = self.solvers[solver_i].1.approximate(t, h, &f, &a);
+                                            t += h
+                                        }
                                         distance(&a, &solution[i])
                                     })
                                     .collect();
@@ -289,7 +298,7 @@ impl eframe::App for ExperimentPicker {
                                 &names,
                                 &plot_path,
                                 title.to_string(),
-                                ("h".to_string(), "e".to_string()),
+                                ("\u{0394} t".to_string(), "e".to_string()),
                             );
                         }
                     },
