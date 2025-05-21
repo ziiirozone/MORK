@@ -1,2 +1,3 @@
 #![allow(non_snake_case)]
-pub mod library;
+pub mod graph;
+pub mod methods;

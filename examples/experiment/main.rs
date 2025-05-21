@@ -1,8 +1,10 @@
-pub mod experiment;
+pub mod experiment_picker;
+pub mod ivp;
+pub mod plot;
 
-use crate::experiment::experiment_picker::*;
-use crate::experiment::ivp::*;
-use MORK::library::methods::*;
+use crate::experiment_picker::*;
+use crate::ivp::*;
+use MORK::methods::*;
 use eframe::egui;
 
 #[allow(non_snake_case)]
@@ -46,18 +48,18 @@ fn main() {
             Box::new(lowest_first_coo_extractor),
         ),
     ];
-    let distances: Vec<(
+    let metrics: Vec<(
         &str,
         Box<dyn Fn(&Vec<Vec<f64>>, &Vec<Vec<f64>>) -> Vec<f64>>,
     )> = vec![
-        ("First coordinate", Box::new(first_coo_distance)),
+        ("First coordinate", Box::new(first_coo_metric)),
         (
             "First coordinate highest derivative",
-            Box::new(highest_first_coo_distance),
+            Box::new(highest_first_coo_metric),
         ),
         (
             "First coordinate lowest derivative",
-            Box::new(lowest_first_coo_distance),
+            Box::new(lowest_first_coo_metric),
         ),
     ];
     let options = eframe::NativeOptions {
@@ -65,15 +67,18 @@ fn main() {
         vsync: false,
         ..Default::default()
     };
+    let path = "/run/media/ziii/SSD_loris/programs/rust/MORK/src/output".to_string();
+
     eframe::run_native(
         "Experiment selector",
         options,
         Box::new(|_cc| {
             Ok(Box::new(ExperimentPicker::new(
+                path,
                 experiments,
                 solvers,
                 extractors,
-                distances,
+                metrics,
             )))
         }),
     )

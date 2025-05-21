@@ -1,6 +1,6 @@
-use crate::experiment::ivp::IVPType;
-use crate::experiment::plot::{log_plot, plot};
-use MORK::library::methods::Solver;
+use crate::ivp::IVPType;
+use crate::plot::{log_plot, plot};
+use MORK::methods::Solver;
 use eframe::egui::{self, Color32, RichText, Spinner, Widget};
 use plotters::style::Color;
 use plotters::style::{Palette, Palette99};
@@ -20,14 +20,14 @@ pub struct ExperimentPicker {
     ivps: Vec<(String, IVPType, Vec<String>)>,
     solvers: Vec<(String, Box<dyn Solver>)>,
     extractors: Vec<(String, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)>,
-    distances: Vec<(
+    metrics: Vec<(
         String,
         Box<dyn Fn(&Vec<Vec<f64>>, &Vec<Vec<f64>>) -> Vec<f64>>,
     )>,
     ivp_index: usize,
     solvers_selected: Vec<bool>,
     extractor_index: usize,
-    distance_index: usize,
+    metrics_index: usize,
     goal: Goal,
     plot_solution: bool,
     step_size_plot: f64,
@@ -47,6 +47,7 @@ pub struct ExperimentPicker {
 
 impl ExperimentPicker {
     pub fn new(
+        path: String,
         experiments: Vec<(impl ToString, IVPType, Vec<impl ToString>)>,
         solvers: Vec<(impl ToString, Box<dyn Solver>)>,
         extractors: Vec<(impl ToString, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)>,
@@ -56,8 +57,6 @@ impl ExperimentPicker {
         )>,
     ) -> Self {
         let len_solv = solvers.len();
-        //let path = PathBuf::from("D:/programs/rust/MORK/src/output").to_string();
-        let path = "/run/media/ziii/SSD_loris/programs/rust/MORK/src/output".to_string();
         ExperimentPicker {
             ivps: experiments
                 .into_iter()
@@ -77,14 +76,14 @@ impl ExperimentPicker {
                 .into_iter()
                 .map(|e| (e.0.to_string(), e.1))
                 .collect(),
-            distances: distances
+            metrics: distances
                 .into_iter()
                 .map(|e| (e.0.to_string(), e.1))
                 .collect(),
             ivp_index: 0,
             solvers_selected: vec![false; len_solv],
             extractor_index: 0,
-            distance_index: 0,
+            metrics_index: 0,
             goal: Goal::Plot,
             plot_solution: true,
             step_size_plot: 0.1,
@@ -128,16 +127,12 @@ impl eframe::App for ExperimentPicker {
             // Options according to goal
             match &self.goal {
                 Goal::Order => {
-                    // select distance function
-                    egui::ComboBox::from_label("Distances")
-                        .selected_text(&self.distances[self.distance_index].0)
+                    // select a metric
+                    egui::ComboBox::from_label("Metrics")
+                        .selected_text(&self.metrics[self.metrics_index].0)
                         .show_ui(ui, |ui| {
-                            for i in 0..self.distances.len() {
-                                ui.selectable_value(
-                                    &mut self.distance_index,
-                                    i,
-                                    &self.distances[i].0,
-                                );
+                            for i in 0..self.metrics.len() {
+                                ui.selectable_value(&mut self.metrics_index, i, &self.metrics[i].0);
                             }
                         });
                     ui.label("Samples");
@@ -250,9 +245,11 @@ impl eframe::App for ExperimentPicker {
                                         * ratio.powf(i as f64 / (self.order_samples - 1) as f64)
                                 })
                                 .collect();
-                            let solution: Vec<Vec<Vec<f64>>> =
-                                h_list.iter().map(|&h| ivp.solution(t0 + self.order_iterations as f64 * h)).collect();
-                            let distance = &self.distances[self.distance_index].1;
+                            let solution: Vec<Vec<Vec<f64>>> = h_list
+                                .iter()
+                                .map(|&h| ivp.solution(t0 + self.order_iterations as f64 * h))
+                                .collect();
+                            let distance = &self.metrics[self.metrics_index].1;
                             for solver_i in (0..self.solvers_selected.len())
                                 .filter(|i| self.solvers_selected[*i])
                             {
@@ -412,7 +409,7 @@ impl eframe::App for ExperimentPicker {
                             let l = data.len() - 1;
                             println!(
                                 "Average time for {solver_name} : {:#?} nanos",
-                                (data[l].iter().sum::<u128>() / (data[l].len() as u128))
+                                (data[l].iter().sum::<u128>() / (data[l].len() as u128)) //pretty print commands
                                     .to_string()
                                     .as_bytes()
                                     .rchunks(3)

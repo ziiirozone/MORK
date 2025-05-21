@@ -107,17 +107,17 @@ pub fn lowest_first_coo_extractor(y: &Vec<Vec<f64>>) -> Vec<f64> {
     vec![y[0][y[0].len() - 1]]
 }
 
-pub fn first_coo_distance(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
+pub fn first_coo_metric(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
     y[0].iter()
         .zip(x[0].iter())
         .map(|(x0, y0)| (x0 - y0).abs())
         .collect()
 }
 
-pub fn highest_first_coo_distance(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
+pub fn highest_first_coo_metric(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
     vec![(y[0][0] - x[0][0]).abs()]
 }
 
-pub fn lowest_first_coo_distance(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
+pub fn lowest_first_coo_metric(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<f64> {
     vec![(y[0][y[0].len() - 1] - x[0][y[0].len() - 1]).abs()]
 }

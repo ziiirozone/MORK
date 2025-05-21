@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::library::graph::*;
+use crate::graph::*;
 
 const ERROR_FRACTION: f64 = 0.001;
 const MAX_ITER: u32 = 500;
