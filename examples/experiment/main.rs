@@ -2,6 +2,10 @@ pub mod experiment_picker;
 pub mod ivp;
 pub mod plot;
 
+use std::env;
+use std::fs::create_dir;
+use std::io::ErrorKind;
+
 use crate::experiment_picker::*;
 use crate::ivp::*;
 use MORK::methods::*;
@@ -67,8 +71,20 @@ fn main() {
         vsync: false,
         ..Default::default()
     };
-    let path = "/run/media/ziii/SSD_loris/programs/rust/MORK/src/output".to_string();
-
+    let mut path = env::current_dir().expect("couldn't get current directory");
+    path.push("output");
+    match create_dir(&path) {
+        Ok(_) => {
+            println!("Created folder \"output\" at {path:?}");
+        }
+        Err(error) => {
+            if error.kind() == ErrorKind::AlreadyExists {
+                println!("Folder \"output\" already existed at {path:?}");
+            } else {
+                panic!("Couldn't create folder \"output\" at {path:?}")
+            }
+        }
+    };
     eframe::run_native(
         "Experiment selector",
         options,

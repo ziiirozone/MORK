@@ -8,6 +8,7 @@ use plotters::style::{Palette, Palette99};
 use serde_cbor::to_vec;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::time::Instant;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -42,12 +43,12 @@ pub struct ExperimentPicker {
     t0: f64,
     order_error: bool,
     plot_solution_error: bool,
-    path: String,
+    path: PathBuf,
 }
 
 impl ExperimentPicker {
     pub fn new(
-        path: String,
+        path: PathBuf,
         experiments: Vec<(impl ToString, IVPType, Vec<impl ToString>)>,
         solvers: Vec<(impl ToString, Box<dyn Solver>)>,
         extractors: Vec<(impl ToString, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)>,
@@ -153,6 +154,7 @@ impl eframe::App for ExperimentPicker {
                     ui.label("number of iterations");
                     ui.add(egui::DragValue::new(&mut self.order_iterations).max_decimals(0));
                 }
+
                 Goal::Plot => {
                     // select data extractor
                     egui::ComboBox::from_label("Extractor")
@@ -180,6 +182,7 @@ impl eframe::App for ExperimentPicker {
                             .min_decimals(16),
                     );
                 }
+
                 Goal::Measure => {
                     ui.label("Step size");
                     ui.add(
@@ -233,8 +236,10 @@ impl eframe::App for ExperimentPicker {
                             self.order_error = true;
                         }
                         IVPType::Solved(ivp) => {
-                            let plot_path = self.path.clone() + "/order.svg";
-                            let cbor_path = self.path.clone() + "/order.cbor";
+                            let mut plot_path = self.path.clone();
+                            plot_path.push("order.svg");
+                            let mut cbor_path = self.path.clone();
+                            cbor_path.push("order.cbor");
                             let title = format!("Order - {}", ivp_name);
                             let mut names = Vec::new();
                             let mut data: Vec<Vec<(f64, f64)>> = Vec::new();
@@ -299,9 +304,12 @@ impl eframe::App for ExperimentPicker {
                             );
                         }
                     },
+
                     Goal::Plot => {
-                        let plot_path = self.path.clone() + "/plot.svg";
-                        let cbor_path = self.path.clone() + "/plot.cbor";
+                        let mut plot_path = self.path.clone();
+                        plot_path.push("plot.svg");
+                        let mut cbor_path = self.path.clone();
+                        cbor_path.push("plot.cbor");
                         let title = format!("Plot - {}", ivp_name);
                         let mut names = Vec::new();
                         let mut data = Vec::new();
@@ -337,12 +345,9 @@ impl eframe::App for ExperimentPicker {
                             .filter(|x| self.solvers_selected[x.0])
                         {
                             let mut y: Vec<Vec<Vec<f64>>> = t.iter().map(|_| y0.clone()).collect();
-                            let time = Instant::now();
                             for k in 0..q {
                                 y[k + 1] = solver.approximate(t[k], self.step_size_plot, &f, &y[k]);
                             }
-                            let delta = time.elapsed().as_micros();
-                            println!("Time elapsed for {solver_name} : {delta} micros");
                             let y1: Vec<Vec<f64>> = y.into_iter().map(|x| extractor(&x)).collect();
                             for k in 0..y1[0].len() {
                                 let y2 = t
@@ -376,8 +381,10 @@ impl eframe::App for ExperimentPicker {
                             ("t".to_string(), "y".to_string()),
                         );
                     }
+
                     Goal::Measure => {
-                        let cbor_path = self.path.clone() + "/measure.cbor";
+                        let mut cbor_path = self.path.clone();
+                        cbor_path.push("measure.cbor");
                         let mut data: Vec<Vec<u128>> = Vec::new();
                         let t: Vec<f64> = (0..=self.iterations_measure)
                             .map(|q1| t0 + self.step_size_plot * q1 as f64)
@@ -409,7 +416,7 @@ impl eframe::App for ExperimentPicker {
                             let l = data.len() - 1;
                             println!(
                                 "Average time for {solver_name} : {:#?} nanos",
-                                (data[l].iter().sum::<u128>() / (data[l].len() as u128)) //pretty print commands
+                                (data[l].iter().sum::<u128>() / (data[l].len() as u128)) //pretty print formating
                                     .to_string()
                                     .as_bytes()
                                     .rchunks(3)
