@@ -1,4 +1,4 @@
-use crate::ivp::IVPType;
+use crate::ivp::Experiment;
 use crate::plot::{log_plot, plot};
 use MORK::methods::Solver;
 use eframe::egui::{self, Color32, RichText, Spinner, Widget};
@@ -11,6 +11,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
+const SOLUTION_ERROR_MSG : &str = "Experiment was identified as a solved experiment but could not provide a solution";
+
 #[derive(Debug, PartialEq, Clone)]
 enum Goal {
     Order,
@@ -18,7 +20,7 @@ enum Goal {
     Measure,
 }
 pub struct ExperimentPicker {
-    ivps: Vec<(String, IVPType, Vec<String>)>,
+    experiments: Vec<Box<dyn Experiment>>,
     solvers: Vec<(String, Box<dyn Solver>)>,
     extractors: Vec<(String, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)>,
     metrics: Vec<(
@@ -40,7 +42,6 @@ pub struct ExperimentPicker {
     order_samples: u32,
     order_iterations: u32,
     delta_t: f64,
-    t0: f64,
     order_error: bool,
     plot_solution_error: bool,
     path: PathBuf,
@@ -49,7 +50,7 @@ pub struct ExperimentPicker {
 impl ExperimentPicker {
     pub fn new(
         path: PathBuf,
-        experiments: Vec<(impl ToString, IVPType, Vec<impl ToString>)>,
+        experiments: Vec<Box<dyn Experiment>>,
         solvers: Vec<(impl ToString, Box<dyn Solver>)>,
         extractors: Vec<(impl ToString, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)>,
         distances: Vec<(
@@ -59,16 +60,7 @@ impl ExperimentPicker {
     ) -> Self {
         let len_solv = solvers.len();
         ExperimentPicker {
-            ivps: experiments
-                .into_iter()
-                .map(|e| {
-                    (
-                        e.0.to_string(),
-                        e.1,
-                        e.2.into_iter().map(|s| s.to_string()).collect(),
-                    )
-                })
-                .collect(),
+            experiments,
             solvers: solvers
                 .into_iter()
                 .map(|e| (e.0.to_string(), e.1))
@@ -96,7 +88,6 @@ impl ExperimentPicker {
             order_samples: 20,
             order_iterations: 1,
             delta_t: 10.,
-            t0: 0.,
             order_error: false,
             plot_solution_error: false,
             path,
@@ -109,10 +100,10 @@ impl eframe::App for ExperimentPicker {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Select initial value problem
             egui::ComboBox::from_label("Experiments")
-                .selected_text(&self.ivps[self.ivp_index].0)
+                .selected_text(&self.experiments[self.ivp_index].name())
                 .show_ui(ui, |ui| {
-                    for i in 0..self.ivps.len() {
-                        ui.selectable_value(&mut self.ivp_index, i, &self.ivps[i].0);
+                    for i in 0..self.experiments.len() {
+                        ui.selectable_value(&mut self.ivp_index, i, &self.experiments[i].name());
                     }
                 });
             // list of solvers
@@ -197,45 +188,28 @@ impl eframe::App for ExperimentPicker {
                 }
             }
             // change paramaters of ivp
-            match &mut self.ivps[self.ivp_index] {
-                (_, IVPType::NotSolved(ivp), labels) => {
-                    for i in 0..ivp.parameters.len() {
-                        ui.label(&labels[i]);
-                        ui.add(egui::DragValue::new(&mut ivp.parameters[i]));
-                    }
-                }
-                (_, IVPType::Solved(ivp), labels) => {
-                    // If solved ivp select initial instant
-                    ui.label("t0");
-                    ui.add(egui::DragValue::new(&mut self.t0));
-                    for i in 0..ivp.parameters.len() {
-                        ui.label(&labels[i]);
-                        ui.add(egui::DragValue::new(&mut ivp.parameters[i]));
-                    }
-                }
+            let (mut parameters_values,parameters_names) = self.experiments[self.ivp_index].get_parameters();
+            for (value,name) in parameters_values.iter_mut().zip(parameters_names.iter()) {
+                ui.label(name);
+                ui.add(egui::DragValue::new(value));
             }
+            self.experiments[self.ivp_index].change_parameters(parameters_values);
             // runs the experiment
             if ui.button("Run").clicked() {
+                let experiment = &mut self.experiments[self.ivp_index];
+                experiment.apply_parameters();
                 self.plot_solution_error = false;
                 self.order_error = false;
                 let spinner = Spinner::default();
                 spinner.ui(ui);
-                let ivp_name = self.ivps[self.ivp_index].0.clone();
-                let (t0, y0) = match &self.ivps[self.ivp_index].1 {
-                    IVPType::NotSolved(ivp) => (ivp.t0, ivp.y0.clone()),
-                    IVPType::Solved(ivp) => (self.t0, (ivp.solution)(self.t0, &ivp.parameters)),
-                };
-                let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> = match &self.ivps[self.ivp_index].1
-                {
-                    IVPType::NotSolved(ivp) => &|t: f64, y: &Vec<Vec<f64>>| ivp.f(t, y),
-                    IVPType::Solved(ivp) => &|t: f64, y: &Vec<Vec<f64>>| ivp.f(t, y),
-                };
+                let ivp_name = experiment.name();
+                let (t0, y0) = experiment.initial_values();
+                let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> = &|t: f64, y: &Vec<Vec<f64>>| experiment.differential_equation(t, y);
                 match &self.goal {
-                    Goal::Order => match &self.ivps[self.ivp_index].1 {
-                        IVPType::NotSolved(_) => {
+                    Goal::Order => {
+                        if experiment.is_solution() {
                             self.order_error = true;
-                        }
-                        IVPType::Solved(ivp) => {
+                        } else {
                             let mut plot_path = self.path.clone();
                             plot_path.push("order.svg");
                             let mut cbor_path = self.path.clone();
@@ -252,7 +226,7 @@ impl eframe::App for ExperimentPicker {
                                 .collect();
                             let solution: Vec<Vec<Vec<f64>>> = h_list
                                 .iter()
-                                .map(|&h| ivp.solution(t0 + self.order_iterations as f64 * h))
+                                .map(|&h| experiment.solution(t0 + self.order_iterations as f64 * h).expect(SOLUTION_ERROR_MSG))
                                 .collect();
                             let distance = &self.metrics[self.metrics_index].1;
                             for solver_i in (0..self.solvers_selected.len())
@@ -319,23 +293,22 @@ impl eframe::App for ExperimentPicker {
                             .collect();
                         let extractor = &self.extractors[self.extractor_index].1;
                         if self.plot_solution {
-                            match &self.ivps[self.ivp_index].1 {
-                                IVPType::NotSolved(_) => self.plot_solution_error = true,
-                                IVPType::Solved(ivp) => {
-                                    let y: Vec<Vec<f64>> = t
+                            if experiment.is_solution() {
+                                let y: Vec<Vec<f64>> = t
+                                    .iter()
+                                    .map(|&t1| extractor(&experiment.solution(t1).expect(SOLUTION_ERROR_MSG)))
+                                    .collect();
+                                for k in 0..y[0].len() {
+                                    let y1: Vec<(f64, f64)> = t
                                         .iter()
-                                        .map(|t1| extractor(&(ivp.solution)(*t1, &ivp.parameters)))
+                                        .enumerate()
+                                        .map(|(i, t1)| (*t1, y[i][k]))
                                         .collect();
-                                    for k in 0..y[0].len() {
-                                        let y1: Vec<(f64, f64)> = t
-                                            .iter()
-                                            .enumerate()
-                                            .map(|(i, t1)| (*t1, y[i][k]))
-                                            .collect();
-                                        data.push(y1);
-                                        names.push(Some("Solution".to_string() + &k.to_string()));
-                                    }
+                                    data.push(y1);
+                                    names.push(Some("Solution".to_string() + &k.to_string()));
                                 }
+                            } else {
+                                self.plot_solution_error = true
                             }
                         }
                         for (_, (solver_name, solver)) in self

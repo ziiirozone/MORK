@@ -1,5 +1,16 @@
 #![allow(non_snake_case)]
 
+pub trait Experiment {
+    fn differential_equation(&self,t:f64, y: &Vec<Vec<f64>>) -> Vec<f64>;
+    fn is_solution(&self) -> bool;
+    fn solution(&self,t : f64) -> Option<Vec<Vec<f64>>>; // Should return None if not solution
+    fn initial_values(&self) -> (f64,Vec<Vec<f64>>); // t0 and y0
+    fn get_parameters(&self) -> (Vec<f64>,Vec<String>);
+    fn change_parameters(&mut self, parameters : Vec<f64>);
+    fn apply_parameters(&mut self); // If changing parameters involves heavy computations this function will be called before the ivp is used as a trigger for those computations
+    fn name(&self) -> String;
+}
+
 pub struct SolvedIVP {
     pub differential_equation: fn(f64, &Vec<Vec<f64>>, &Vec<f64>) -> Vec<f64>,
     pub solution: fn(f64, &Vec<f64>) -> Vec<Vec<f64>>,

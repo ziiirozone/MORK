@@ -36,11 +36,14 @@ fn main() {
         ("IRK3_1", Box::new(IRK3_1())),
         ("IRK4", Box::new(IRK4())),
     ];
+    let experiments = Vec::new();
+    /*
     let experiments = vec![
         ("sin - cos", IVPType::Solved(ivp_sin_cos()), vec!["n"]),
         ("exponential", IVPType::Solved(ivp_exp()), vec!["n"]),
         ("exo fatma", IVPType::Solved(exo_fatma()), vec![]),
     ];
+    */
     let extractors: Vec<(&str, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)> = vec![
         ("First coordinate", Box::new(first_coo_extractor)),
         (
