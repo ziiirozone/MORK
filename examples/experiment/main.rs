@@ -1,5 +1,5 @@
 pub mod experiment_picker;
-pub mod ivp;
+pub mod experiments;
 pub mod plot;
 
 use std::env;
@@ -7,7 +7,7 @@ use std::fs::create_dir;
 use std::io::ErrorKind;
 
 use crate::experiment_picker::*;
-use crate::ivp::*;
+use crate::experiments::*;
 use MORK::methods::*;
 use eframe::egui;
 
@@ -36,14 +36,10 @@ fn main() {
         ("IRK3_1", Box::new(IRK3_1())),
         ("IRK4", Box::new(IRK4())),
     ];
-    let experiments = Vec::new();
-    /*
-    let experiments = vec![
-        ("sin - cos", IVPType::Solved(ivp_sin_cos()), vec!["n"]),
-        ("exponential", IVPType::Solved(ivp_exp()), vec!["n"]),
-        ("exo fatma", IVPType::Solved(exo_fatma()), vec![]),
+    let experiments: Vec<Box<dyn Experiment>> = vec![
+        Box::new(experiment_sin_cos()),
+        Box::new(experiment_exp()),
     ];
-    */
     let extractors: Vec<(&str, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)> = vec![
         ("First coordinate", Box::new(first_coo_extractor)),
         (

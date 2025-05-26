@@ -1,4 +1,4 @@
-use crate::ivp::Experiment;
+use crate::experiments::Experiment;
 use crate::plot::{log_plot, plot};
 use MORK::methods::Solver;
 use eframe::egui::{self, Color32, RichText, Spinner, Widget};
@@ -27,7 +27,7 @@ pub struct ExperimentPicker {
         String,
         Box<dyn Fn(&Vec<Vec<f64>>, &Vec<Vec<f64>>) -> Vec<f64>>,
     )>,
-    ivp_index: usize,
+    experiment_index: usize,
     solvers_selected: Vec<bool>,
     extractor_index: usize,
     metrics_index: usize,
@@ -73,7 +73,7 @@ impl ExperimentPicker {
                 .into_iter()
                 .map(|e| (e.0.to_string(), e.1))
                 .collect(),
-            ivp_index: 0,
+            experiment_index: 0,
             solvers_selected: vec![false; len_solv],
             extractor_index: 0,
             metrics_index: 0,
@@ -100,10 +100,10 @@ impl eframe::App for ExperimentPicker {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Select initial value problem
             egui::ComboBox::from_label("Experiments")
-                .selected_text(&self.experiments[self.ivp_index].name())
+                .selected_text(&self.experiments[self.experiment_index].name())
                 .show_ui(ui, |ui| {
                     for i in 0..self.experiments.len() {
-                        ui.selectable_value(&mut self.ivp_index, i, &self.experiments[i].name());
+                        ui.selectable_value(&mut self.experiment_index, i, &self.experiments[i].name());
                     }
                 });
             // list of solvers
@@ -187,34 +187,34 @@ impl eframe::App for ExperimentPicker {
                     ui.add(egui::DragValue::new(&mut self.repeats_measure).max_decimals(0));
                 }
             }
-            // change paramaters of ivp
-            let (mut parameters_values,parameters_names) = self.experiments[self.ivp_index].get_parameters();
+            // change paramaters of experiment
+            let (mut parameters_values,parameters_names) = self.experiments[self.experiment_index].get_parameters();
             for (value,name) in parameters_values.iter_mut().zip(parameters_names.iter()) {
                 ui.label(name);
                 ui.add(egui::DragValue::new(value));
             }
-            self.experiments[self.ivp_index].change_parameters(parameters_values);
+            self.experiments[self.experiment_index].change_parameters(parameters_values);
             // runs the experiment
             if ui.button("Run").clicked() {
-                let experiment = &mut self.experiments[self.ivp_index];
+                let experiment = &mut self.experiments[self.experiment_index];
                 experiment.apply_parameters();
                 self.plot_solution_error = false;
                 self.order_error = false;
                 let spinner = Spinner::default();
                 spinner.ui(ui);
-                let ivp_name = experiment.name();
+                let experiment_name = experiment.name();
                 let (t0, y0) = experiment.initial_values();
                 let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> = &|t: f64, y: &Vec<Vec<f64>>| experiment.differential_equation(t, y);
                 match &self.goal {
                     Goal::Order => {
-                        if experiment.is_solution() {
+                        if !experiment.is_solved() {
                             self.order_error = true;
                         } else {
                             let mut plot_path = self.path.clone();
                             plot_path.push("order.svg");
                             let mut cbor_path = self.path.clone();
                             cbor_path.push("order.cbor");
-                            let title = format!("Order - {}", ivp_name);
+                            let title = format!("Order - {}", experiment_name);
                             let mut names = Vec::new();
                             let mut data: Vec<Vec<(f64, f64)>> = Vec::new();
                             let ratio = self.right_h_interval / self.left_h_interval;
@@ -284,7 +284,7 @@ impl eframe::App for ExperimentPicker {
                         plot_path.push("plot.svg");
                         let mut cbor_path = self.path.clone();
                         cbor_path.push("plot.cbor");
-                        let title = format!("Plot - {}", ivp_name);
+                        let title = format!("Plot - {}", experiment_name);
                         let mut names = Vec::new();
                         let mut data = Vec::new();
                         let q = (self.delta_t / self.step_size_plot) as usize;
@@ -293,7 +293,7 @@ impl eframe::App for ExperimentPicker {
                             .collect();
                         let extractor = &self.extractors[self.extractor_index].1;
                         if self.plot_solution {
-                            if experiment.is_solution() {
+                            if experiment.is_solved() {
                                 let y: Vec<Vec<f64>> = t
                                     .iter()
                                     .map(|&t1| extractor(&experiment.solution(t1).expect(SOLUTION_ERROR_MSG)))
