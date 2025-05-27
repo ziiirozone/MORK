@@ -1,7 +1,7 @@
 use crate::experiments::Experiment;
 use crate::plot::{log_plot, plot};
 use MORK::methods::Solver;
-use eframe::egui::{self, Color32, RichText, Spinner, Widget};
+use eframe::egui::{self, Color32, RichText, Separator, Spinner, Widget};
 use plotters::style::Color;
 use plotters::style::{Palette, Palette99};
 
@@ -98,7 +98,7 @@ impl ExperimentPicker {
 
 impl eframe::App for ExperimentPicker {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::SidePanel::left("exp_solver").show(ctx, |ui| {
             // Select initial value problem
             egui::ComboBox::from_label("Experiments")
                 .selected_text(&self.experiments[self.experiment_index].name())
@@ -115,6 +115,9 @@ impl eframe::App for ExperimentPicker {
             for i in 0..self.solvers.len() {
                 ui.checkbox(&mut self.solvers_selected[i], &self.solvers[i].0);
             }
+        });
+        egui::SidePanel::left("options").show(ctx, |ui| {
+
             // select goal
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.goal, Goal::Plot, "Plot");
@@ -201,6 +204,9 @@ impl eframe::App for ExperimentPicker {
             }
             self.experiments[self.experiment_index].change_parameters(parameters_values);
             // runs the experiment
+        });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            
             if ui.button("Run").clicked() {
                 let experiment = &mut self.experiments[self.experiment_index];
                 experiment.apply_parameters();
