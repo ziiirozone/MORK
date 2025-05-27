@@ -11,7 +11,8 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
-const SOLUTION_ERROR_MSG : &str = "Experiment was identified as a solved experiment but could not provide a solution";
+const SOLUTION_ERROR_MSG: &str =
+    "Experiment was identified as a solved experiment but could not provide a solution";
 
 #[derive(Debug, PartialEq, Clone)]
 enum Goal {
@@ -103,7 +104,11 @@ impl eframe::App for ExperimentPicker {
                 .selected_text(&self.experiments[self.experiment_index].name())
                 .show_ui(ui, |ui| {
                     for i in 0..self.experiments.len() {
-                        ui.selectable_value(&mut self.experiment_index, i, &self.experiments[i].name());
+                        ui.selectable_value(
+                            &mut self.experiment_index,
+                            i,
+                            &self.experiments[i].name(),
+                        );
                     }
                 });
             // list of solvers
@@ -188,8 +193,9 @@ impl eframe::App for ExperimentPicker {
                 }
             }
             // change paramaters of experiment
-            let (mut parameters_values,parameters_names) = self.experiments[self.experiment_index].get_parameters();
-            for (value,name) in parameters_values.iter_mut().zip(parameters_names.iter()) {
+            let (mut parameters_values, parameters_names) =
+                self.experiments[self.experiment_index].get_parameters();
+            for (value, name) in parameters_values.iter_mut().zip(parameters_names.iter()) {
                 ui.label(name);
                 ui.add(egui::DragValue::new(value));
             }
@@ -204,7 +210,8 @@ impl eframe::App for ExperimentPicker {
                 spinner.ui(ui);
                 let experiment_name = experiment.name();
                 let (t0, y0) = experiment.initial_values();
-                let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> = &|t: f64, y: &Vec<Vec<f64>>| experiment.differential_equation(t, y);
+                let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> =
+                    &|t: f64, y: &Vec<Vec<f64>>| experiment.differential_equation(t, y);
                 match &self.goal {
                     Goal::Order => {
                         if !experiment.is_solved() {
@@ -226,7 +233,11 @@ impl eframe::App for ExperimentPicker {
                                 .collect();
                             let solution: Vec<Vec<Vec<f64>>> = h_list
                                 .iter()
-                                .map(|&h| experiment.solution(t0 + self.order_iterations as f64 * h).expect(SOLUTION_ERROR_MSG))
+                                .map(|&h| {
+                                    experiment
+                                        .solution(t0 + self.order_iterations as f64 * h)
+                                        .expect(SOLUTION_ERROR_MSG)
+                                })
                                 .collect();
                             let distance = &self.metrics[self.metrics_index].1;
                             for solver_i in (0..self.solvers_selected.len())
@@ -277,7 +288,7 @@ impl eframe::App for ExperimentPicker {
                                 ("\u{0394} t".to_string(), "e".to_string()),
                             );
                         }
-                    },
+                    }
 
                     Goal::Plot => {
                         let mut plot_path = self.path.clone();
@@ -296,7 +307,11 @@ impl eframe::App for ExperimentPicker {
                             if experiment.is_solved() {
                                 let y: Vec<Vec<f64>> = t
                                     .iter()
-                                    .map(|&t1| extractor(&experiment.solution(t1).expect(SOLUTION_ERROR_MSG)))
+                                    .map(|&t1| {
+                                        extractor(
+                                            &experiment.solution(t1).expect(SOLUTION_ERROR_MSG),
+                                        )
+                                    })
                                     .collect();
                                 for k in 0..y[0].len() {
                                     let y1: Vec<(f64, f64)> = t

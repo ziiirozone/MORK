@@ -36,10 +36,12 @@ fn main() {
         ("IRK3_1", Box::new(IRK3_1())),
         ("IRK4", Box::new(IRK4())),
     ];
-    let experiments: Vec<Box<dyn Experiment>> = vec![
-        Box::new(experiment_sin_cos()),
-        Box::new(experiment_exp()),
-    ];
+    let experiments: Vec<Box<dyn Experiment>> =
+        vec![
+            Box::new(experiment_sin_cos()), 
+            Box::new(experiment_exp()),
+            Box::new(experiment_linear_single_root())
+        ];
     let extractors: Vec<(&str, Box<dyn Fn(&Vec<Vec<f64>>) -> Vec<f64>>)> = vec![
         ("First coordinate", Box::new(first_coo_extractor)),
         (
