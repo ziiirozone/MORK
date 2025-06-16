@@ -165,7 +165,7 @@ impl Solver for GMORK {
                 self.h_powers[N] = h.powi(N as i32)
             }
         }
-        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.;y0.len()]).collect();
+        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.; y0.len()]).collect();
         let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
         let mut sum;
         // calculate difference threshold for picard iterations
@@ -388,7 +388,7 @@ impl Solver for NDMORK {
                 self.h_powers[N] = h.powi(N as i32)
             }
         }
-        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.;y0.len()]).collect();
+        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.; y0.len()]).collect();
         let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
         // calculate difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
@@ -740,7 +740,7 @@ impl Solver for RK {
         if h == 0. {
             return y0.clone();
         }
-        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.;y0.len()]).collect();
+        let mut F: Vec<Vec<f64>> = (0..self.s).map(|_| vec![0.; y0.len()]).collect();
         let mut y: Vec<Vec<Vec<f64>>> = (0..=self.s).map(|_| y0.clone()).collect();
         // calculate difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
