@@ -8,7 +8,9 @@ use std::io::ErrorKind;
 
 use crate::experiment_picker::*;
 use crate::experiments::*;
-use MORK::methods::*;
+use MORK::solvers::NDMORK_methods::*;
+use MORK::solvers::RK_methods::*;
+use MORK::solvers::Solver;
 use eframe::egui;
 
 #[allow(non_snake_case)]
@@ -17,6 +19,7 @@ fn main() {
     let solvers: Vec<(&str, Box<dyn Solver>)> = vec![
         ("ENDMORK1", Box::new(ENDMORK1())),
         ("ENDMORK2", Box::new(ENDMORK2())),
+        ("ENDMORK2 bis", Box::new(ENDMORK2bis())),
         ("ENDMORK3", Box::new(ENDMORK3())),
         ("ENDMORK4_1", Box::new(ENDMORK4_1())),
         ("ENDMORK4_2", Box::new(ENDMORK4_2())),

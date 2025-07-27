@@ -101,10 +101,12 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
     #[allow(non_snake_case)]
     let mut S: Vec<usize> = (0..s).filter(|&j| !(dag[j].contains(&true))).collect();
     let mut order: Vec<usize> = Vec::new();
-    while let Some(node) = S.pop() {
-        order.push(node);
-        for j in 0..s {
-            dag[j][node] = false;
+    while !S.is_empty() {
+        for node in S {
+            order.push(node);
+            for j in 0..s {
+                dag[j][node] = false;
+            }
         }
         S = (0..dag.len())
             .filter(|&j| !order.contains(&j) && !(dag[j].contains(&true)))

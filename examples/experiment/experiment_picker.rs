@@ -1,6 +1,6 @@
 use crate::experiments::Experiment;
 use crate::plot::{log_plot, plot};
-use MORK::methods::Solver;
+use MORK::solvers::Solver;
 use eframe::egui::{self, Color32, RichText, Spinner, Widget};
 use plotters::style::Color;
 use plotters::style::{Palette, Palette99};
@@ -150,8 +150,7 @@ pub fn order_experiment(
     let ratio = parameters.right_h_interval / parameters.left_h_interval;
     let h_list: Vec<f64> = (0..parameters.samples)
         .map(|i| {
-            parameters.left_h_interval
-                * ratio.powf(i as f64 / (parameters.samples - 1) as f64)
+            parameters.left_h_interval * ratio.powf(i as f64 / (parameters.samples - 1) as f64)
         })
         .collect();
     let solution: Vec<Vec<Vec<f64>>> = h_list
@@ -318,8 +317,7 @@ pub fn measure_experiment(
                     let mut y: Vec<Vec<Vec<f64>>> = t.iter().map(|_| y0.clone()).collect();
                     let time = Instant::now();
                     for k in 0..(parameters.iterations as usize) {
-                        y[k + 1] =
-                            solver.approximate(t[k], parameters.step_size, &f, &y[k]);
+                        y[k + 1] = solver.approximate(t[k], parameters.step_size, &f, &y[k]);
                     }
                     time.elapsed().as_nanos()
                 })
@@ -384,8 +382,7 @@ impl eframe::App for ExperimentPicker {
                         });
                     ui.label("Samples");
                     ui.add(
-                        egui::DragValue::new(&mut self.order_parameters.samples)
-                            .max_decimals(0),
+                        egui::DragValue::new(&mut self.order_parameters.samples).max_decimals(0),
                     );
                     ui.label("Left interval");
                     ui.add(
@@ -402,8 +399,7 @@ impl eframe::App for ExperimentPicker {
 
                     ui.label("number of iterations");
                     ui.add(
-                        egui::DragValue::new(&mut self.order_parameters.iterations)
-                            .max_decimals(0),
+                        egui::DragValue::new(&mut self.order_parameters.iterations).max_decimals(0),
                     );
                 }
 
@@ -452,8 +448,7 @@ impl eframe::App for ExperimentPicker {
                     );
                     ui.label("Number of repeatitions");
                     ui.add(
-                        egui::DragValue::new(&mut self.measure_parameters.repeats)
-                            .max_decimals(0),
+                        egui::DragValue::new(&mut self.measure_parameters.repeats).max_decimals(0),
                     );
                 }
             }
