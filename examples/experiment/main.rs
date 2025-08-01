@@ -8,8 +8,8 @@ use std::io::ErrorKind;
 
 use crate::experiment_picker::*;
 use crate::experiments::*;
-use MORK::solvers::NDMORK_methods::*;
-use MORK::solvers::RK_methods::*;
+use MORK::solver_list::NDMORK_methods::*;
+use MORK::solver_list::RK_methods::*;
 use MORK::solvers::Solver;
 use eframe::egui;
 

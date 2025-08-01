@@ -114,3 +114,35 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
     }
     order
 }
+
+pub fn global_cost(individual_cost: &Vec<u32>,graph: &Vec<Vec<bool>>) -> Vec<u32> {
+    let s = graph.len();
+    let mut cost = individual_cost.clone();
+    let mut queue: Vec<usize> = (0..s).filter(|&i| 
+        {
+            let mut successor=false;
+            for j in 0..s {
+                if graph[j][i] {
+                    successor = true
+                }
+                break
+            }
+            !successor
+        }
+    ).collect();
+    let mut block;
+    while !queue.is_empty() {
+        block = queue.pop().unwrap();
+        for j in 0..s {
+            if graph[block][j] {
+                if individual_cost[j] + cost[block] > cost[j] {
+                    cost[j] = individual_cost[j] + cost[block];
+                    if !queue.contains(&j) {
+                        queue.push(j)
+                    }
+                }
+            }
+        }
+    }
+    cost
+}
