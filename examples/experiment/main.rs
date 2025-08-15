@@ -8,9 +8,9 @@ use std::io::ErrorKind;
 
 use crate::experiment_picker::*;
 use crate::experiments::*;
-use MORK::solver_list::NDMORK_methods::*;
-use MORK::solver_list::RK_methods::*;
-use MORK::solvers::Solver;
+use MORK::NDMORK::list::*;
+use MORK::RK::list::*;
+use MORK::Solver;
 use eframe::egui;
 
 #[allow(non_snake_case)]

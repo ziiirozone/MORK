@@ -1,6 +1,6 @@
 use crate::experiments::Experiment;
 use crate::plot::{log_plot, plot};
-use MORK::solvers::Solver;
+use MORK::Solver;
 use eframe::egui::{self, Color32, RichText, Spinner, Widget};
 use plotters::style::Color;
 use plotters::style::{Palette, Palette99};

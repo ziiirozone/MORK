@@ -5,7 +5,7 @@ enum NodeState {
     InSCC(usize),
 }
 
-pub fn scc(graph: &Vec<Vec<bool>>) -> Vec<Vec<usize>> {
+pub fn SCC(graph: &Vec<Vec<bool>>) -> Vec<Vec<usize>> {
     #[allow(non_snake_case)]
     let mut S: Vec<usize> = Vec::new();
     #[allow(non_snake_case)]
@@ -115,34 +115,44 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
     order
 }
 
-pub fn global_cost(individual_cost: &Vec<u32>,graph: &Vec<Vec<bool>>) -> Vec<u32> {
+pub fn priority(cost: &Vec<u32>, graph: &Vec<Vec<bool>>) -> Vec<u32> {
     let s = graph.len();
-    let mut cost = individual_cost.clone();
-    let mut queue: Vec<usize> = (0..s).filter(|&i| 
-        {
-            let mut successor=false;
-            for j in 0..s {
-                if graph[j][i] {
-                    successor = true
-                }
-                break
+    let mut current_priority: Vec<u32> = (0..s).map(|j| {
+        let mut has_successor = false;
+        for i in 0..s {
+            if graph[i][j] {
+                has_successor = true;
+                break;
             }
-            !successor
         }
-    ).collect();
-    let mut block;
-    while !queue.is_empty() {
-        block = queue.pop().unwrap();
-        for j in 0..s {
-            if graph[block][j] {
-                if individual_cost[j] + cost[block] > cost[j] {
-                    cost[j] = individual_cost[j] + cost[block];
-                    if !queue.contains(&j) {
-                        queue.push(j)
-                    }
-                }
-            }
+        if has_successor {
+            0
+        } else{
+            cost[j]
+        }
+    }).collect();
+    let mut visited = vec![false;s];
+    for j in 0..s {
+        if visited[j] {
+            current_priority[j] = cost[j];
         }
     }
-    cost
+    let mut scc=0;
+    let mut d;
+    while visited.contains(&false) {
+        d=0;
+        for j in 0..s {
+            if !visited[j] && current_priority[j]>d {
+                scc = j;
+                d = current_priority[j];
+            }
+        }
+        for j in 0..s {
+            if graph[scc][j] && cost[j] + d > current_priority[j] {
+                current_priority[j] = cost[j] + d;
+            }
+        }
+        visited[scc] = true;
+    }
+    current_priority
 }
