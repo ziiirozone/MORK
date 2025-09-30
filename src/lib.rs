@@ -1,14 +1,14 @@
 #![allow(non_snake_case)]
-pub mod graph;
-pub mod RK;
-pub mod NDMORK;
 pub mod GMORK;
+pub mod NDMORK;
+pub mod RK;
+pub mod graph;
 
 use crate::graph::*;
 
 const ERROR_FRACTION: f64 = 0.001;
 const MAX_ITER: u32 = 500;
-const MIN_ITER: u32 = 10;
+const MIN_ITER: u32 = 50;
 
 pub trait Solver {
     fn approximate(

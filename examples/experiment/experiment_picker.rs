@@ -25,7 +25,7 @@ pub struct OrderParameters {
     left_h_interval: f64,
     right_h_interval: f64,
     samples: u32,
-    iterations: u32,
+    steps: u32,
 }
 
 impl Default for OrderParameters {
@@ -34,7 +34,7 @@ impl Default for OrderParameters {
             left_h_interval: 0.0001,
             right_h_interval: 1.,
             samples: 20,
-            iterations: 1,
+            steps: 1,
         }
     }
 }
@@ -58,14 +58,14 @@ impl Default for PlotParameters {
 pub struct MesureParameters {
     step_size: f64,
     repeats: u32,
-    iterations: u32,
+    steps: u32,
 }
 
 impl Default for MesureParameters {
     fn default() -> Self {
         MesureParameters {
             step_size: 0.1,
-            iterations: 100,
+            steps: 100,
             repeats: 100,
         }
     }
@@ -157,7 +157,7 @@ pub fn order_experiment(
         .iter()
         .map(|&h| {
             experiment
-                .solution(t0 + parameters.iterations as f64 * h)
+                .solution(t0 + parameters.steps as f64 * h)
                 .expect(SOLUTION_ERROR_MSG)
         })
         .collect();
@@ -170,7 +170,7 @@ pub fn order_experiment(
             .map(|(i, &h)| {
                 let mut a = y0.clone();
                 let mut t = t0;
-                for _ in 0..parameters.iterations {
+                for _ in 0..parameters.steps {
                     a = solvers[solver_i].1.approximate(t, h, &f, &a);
                     t += h
                 }
@@ -303,7 +303,7 @@ pub fn measure_experiment(
     let f: &dyn Fn(f64, &Vec<Vec<f64>>) -> Vec<f64> =
         &|t: f64, y: &Vec<Vec<f64>>| experiment.differential_equation(t, y);
     let mut data: Vec<Vec<u128>> = Vec::new();
-    let t: Vec<f64> = (0..=parameters.iterations)
+    let t: Vec<f64> = (0..=parameters.steps)
         .map(|q1| t0 + parameters.step_size * q1 as f64)
         .collect();
     for (_, (solver_name, solver)) in solvers
@@ -316,7 +316,7 @@ pub fn measure_experiment(
                 .map(|_| {
                     let mut y: Vec<Vec<Vec<f64>>> = t.iter().map(|_| y0.clone()).collect();
                     let time = Instant::now();
-                    for k in 0..(parameters.iterations as usize) {
+                    for k in 0..(parameters.steps as usize) {
                         y[k + 1] = solver.approximate(t[k], parameters.step_size, &f, &y[k]);
                     }
                     time.elapsed().as_nanos()
@@ -397,9 +397,9 @@ impl eframe::App for ExperimentPicker {
                             .min_decimals(16),
                     );
 
-                    ui.label("number of iterations");
+                    ui.label("number of steps");
                     ui.add(
-                        egui::DragValue::new(&mut self.order_parameters.iterations).max_decimals(0),
+                        egui::DragValue::new(&mut self.order_parameters.steps).max_decimals(0),
                     );
                 }
 
@@ -441,9 +441,9 @@ impl eframe::App for ExperimentPicker {
                             .max_decimals(16)
                             .min_decimals(16),
                     );
-                    ui.label("Number of iterations");
+                    ui.label("Number of steps");
                     ui.add(
-                        egui::DragValue::new(&mut self.measure_parameters.iterations)
+                        egui::DragValue::new(&mut self.measure_parameters.steps)
                             .max_decimals(0),
                     );
                     ui.label("Number of repeatitions");

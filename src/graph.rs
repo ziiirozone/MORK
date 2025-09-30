@@ -117,32 +117,30 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
 
 pub fn priority(cost: &Vec<u32>, graph: &Vec<Vec<bool>>) -> Vec<u32> {
     let s = graph.len();
-    let mut current_priority: Vec<u32> = (0..s).map(|j| {
-        let mut has_successor = false;
-        for i in 0..s {
-            if graph[i][j] {
-                has_successor = true;
-                break;
+    let mut current_priority: Vec<u32> = (0..s)
+        .map(|j| {
+            let mut has_successor = false;
+            for i in 0..s {
+                if graph[i][j] {
+                    has_successor = true;
+                    break;
+                }
             }
-        }
-        if has_successor {
-            0
-        } else{
-            cost[j]
-        }
-    }).collect();
-    let mut visited = vec![false;s];
+            if has_successor { 0 } else { cost[j] }
+        })
+        .collect();
+    let mut visited = vec![false; s];
     for j in 0..s {
         if visited[j] {
             current_priority[j] = cost[j];
         }
     }
-    let mut scc=0;
+    let mut scc = 0;
     let mut d;
     while visited.contains(&false) {
-        d=0;
+        d = 0;
         for j in 0..s {
-            if !visited[j] && current_priority[j]>d {
+            if !visited[j] && current_priority[j] > d {
                 scc = j;
                 d = current_priority[j];
             }

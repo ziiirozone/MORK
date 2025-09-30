@@ -10,7 +10,7 @@ pub struct NDMORK {
     pub h: f64,
     pub h_powers: Vec<f64>,
     pub computation_order: Vec<SCC>,
-    pub cyclic_derivatives: Vec<Vec<bool>>, // [N-1][j]
+    pub implicit_ranks: Vec<Vec<bool>>, // [N-1][j]
     pub error_fraction: f64,
     pub min_iter: u32,
     pub max_iter: u32,
@@ -25,13 +25,13 @@ impl NDMORK {
         let s = nodes.len() - 1;
         let weights = vec![weights_function(1)];
         let computation_order = create_computation_order(&maximum_weight_graph);
-        let mut cyclic_derivatives: Vec<Vec<bool>> = vec![vec![false; s]];
+        let mut implicit_ranks: Vec<Vec<bool>> = vec![vec![false; s]];
         for task in computation_order.iter() {
             if let SCC::Implicit(J, _) = task {
                 for &j in J {
                     for &j1 in J {
                         if weights[0][j][j1] != 0. {
-                            cyclic_derivatives[0][j] = true;
+                            implicit_ranks[0][j] = true;
                             break;
                         }
                     }
@@ -49,7 +49,7 @@ impl NDMORK {
             h: 0.,
             h_powers: vec![1., 0.],
             computation_order,
-            cyclic_derivatives,
+            implicit_ranks,
             error_fraction: ERROR_FRACTION,
             min_iter: MIN_ITER,
             max_iter: MAX_ITER,
@@ -65,7 +65,7 @@ impl NDMORK {
         factorial: &mut Vec<f64>,
         stored_length: &mut usize,
         n: usize,
-        cyclic_derivatives: &mut Vec<Vec<bool>>,
+        implicit_ranks: &mut Vec<Vec<bool>>,
         computation_order: &Vec<SCC>,
         coefficients: &mut Vec<Vec<f64>>,
         nodes: &Vec<f64>,
@@ -76,7 +76,7 @@ impl NDMORK {
         factorial.extend(vec![0.; n - *stored_length]);
         weights.extend((*stored_length..n).map(|N| (weights_function)(N as u32 + 1)));
         h_powers.extend((*stored_length..n).map(|N| h.powi(N as i32 + 1)));
-        cyclic_derivatives.extend((*stored_length..n).map(|_| vec![false; s]));
+        implicit_ranks.extend((*stored_length..n).map(|_| vec![false; s]));
         for N in *stored_length..n {
             factorial[N + 1] = factorial[N] * (N as f64 + 1.);
             for task in computation_order.iter() {
@@ -84,7 +84,7 @@ impl NDMORK {
                     for &j in J {
                         for &j1 in J {
                             if weights[N][j][j1] != 0. {
-                                cyclic_derivatives[N][j] = true;
+                                implicit_ranks[N][j] = true;
                                 break;
                             }
                         }
@@ -141,7 +141,7 @@ impl NDMORK {
         min_iter: u32,
         max_iter: u32,
         nodes: &Vec<f64>,
-        cyclic_derivatives: &Vec<Vec<bool>>,
+        implicit_ranks: &Vec<Vec<bool>>,
         weights: &Vec<Vec<Vec<f64>>>,
         h_powers: &Vec<f64>,
         factorial: &Vec<f64>,
@@ -166,7 +166,7 @@ impl NDMORK {
             // add evaluations
             for &j in J {
                 for k in 0..y0.len() {
-                    for N in (0..y0[k].len()).filter(|&N| cyclic_derivatives[N][j]) {
+                    for N in (0..y0[k].len()).filter(|&N| implicit_ranks[N][j]) {
                         sum = 0.;
                         for &j1 in J {
                             sum += weights[N][j][j1] * F[j1][k];
@@ -188,7 +188,7 @@ impl NDMORK {
         max_iter: u32,
         s: usize,
         computation_order: &Vec<SCC>,
-        cyclic_derivatives: &Vec<Vec<bool>>,
+        implicit_ranks: &Vec<Vec<bool>>,
         nodes: &Vec<f64>,
         weights: &Vec<Vec<Vec<f64>>>,
         coefficients: &Vec<Vec<f64>>,
@@ -245,7 +245,7 @@ impl NDMORK {
                         min_iter,
                         max_iter,
                         nodes,
-                        cyclic_derivatives,
+                        implicit_ranks,
                         weights,
                         h_powers,
                         factorial,
@@ -286,7 +286,7 @@ impl Solver for NDMORK {
                     &mut self.factorial,
                     &mut self.stored_length,
                     y0[k].len(),
-                    &mut self.cyclic_derivatives,
+                    &mut self.implicit_ranks,
                     &self.computation_order,
                     &mut self.coefficients,
                     &self.nodes,
@@ -309,7 +309,7 @@ impl Solver for NDMORK {
             self.max_iter,
             self.s,
             &self.computation_order,
-            &self.cyclic_derivatives,
+            &self.implicit_ranks,
             &self.nodes,
             &self.weights,
             &self.coefficients,
@@ -322,47 +322,27 @@ impl Solver for NDMORK {
 pub mod list {
     use super::NDMORK;
 
-    pub fn ENDMORK1_weight_function(_N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_explicit_euler_weight_function(_N: u32) -> Vec<Vec<f64>> {
         vec![vec![0.], vec![1.]]
     }
 
-    pub fn ENDMORK1_nodes() -> Vec<f64> {
+    pub fn MO_explicit_euler_nodes() -> Vec<f64> {
         vec![0., 1.]
     }
 
-    pub fn ENDMORK1_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_explicit_euler_weight_graph() -> Vec<Vec<bool>> {
         vec![vec![false, false], vec![true, false]]
     }
 
-    pub fn ENDMORK1() -> NDMORK {
+    pub fn MO_explicit_euler() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK1_weight_function),
-            ENDMORK1_nodes(),
-            ENDMORK1_weight_graph(),
+            Box::new(MO_explicit_euler_weight_function),
+            MO_explicit_euler_nodes(),
+            MO_explicit_euler_weight_graph(),
         )
     }
 
-    pub fn INDMORK1_weight_function(_N: u32) -> Vec<Vec<f64>> {
-        vec![vec![1.], vec![1.]]
-    }
-
-    pub fn INDMORK1_nodes() -> Vec<f64> {
-        vec![1., 1.]
-    }
-
-    pub fn INDMORK1_weight_graph() -> Vec<Vec<bool>> {
-        vec![vec![true, false], vec![true, false]]
-    }
-
-    pub fn INDMORK1() -> NDMORK {
-        NDMORK::new(
-            Box::new(INDMORK1_weight_function),
-            INDMORK1_nodes(),
-            INDMORK1_weight_graph(),
-        )
-    }
-
-    pub fn ENDMORK2_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_explicit_midpoint_weight_function(N: u32) -> Vec<Vec<f64>> {
         vec![
             vec![0., 0.],
             vec![2_f64.powi(-(N as i32)), 0.],
@@ -370,11 +350,11 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK2_nodes() -> Vec<f64> {
+    pub fn MO_explicit_midpoint_nodes() -> Vec<f64> {
         vec![0., 0.5, 1.]
     }
 
-    pub fn ENDMORK2_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_explicit_midpoint_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![false, false, false],
             vec![true, false, false],
@@ -382,15 +362,15 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK2() -> NDMORK {
+    pub fn MO_explicit_midpoint() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK2_weight_function),
-            ENDMORK2_nodes(),
-            ENDMORK2_weight_graph(),
+            Box::new(MO_explicit_midpoint_weight_function),
+            MO_explicit_midpoint_nodes(),
+            MO_explicit_midpoint_weight_graph(),
         )
     }
 
-    pub fn ENDMORK2bis_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_ralston_weight_function(N: u32) -> Vec<Vec<f64>> {
         vec![
             vec![0., 0.],
             vec![(2_f64 / 3_f64).powi(N as i32), 0.],
@@ -401,11 +381,11 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK2bis_nodes() -> Vec<f64> {
+    pub fn MO_ralston_nodes() -> Vec<f64> {
         vec![0., 2. / 3., 1.]
     }
 
-    pub fn ENDMORK2bis_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_ralston_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![false, false, false],
             vec![true, false, false],
@@ -413,35 +393,15 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK2bis() -> NDMORK {
+    pub fn MO_ralston() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK2_weight_function),
-            ENDMORK2_nodes(),
-            ENDMORK2_weight_graph(),
+            Box::new(MO_ralston_weight_function),
+            MO_ralston_nodes(),
+            MO_ralston_weight_graph(),
         )
     }
 
-    pub fn INDMORK2_weight_function(N: u32) -> Vec<Vec<f64>> {
-        vec![vec![2_f64.powi(-(N as i32))], vec![1.]]
-    }
-
-    pub fn INDMORK2_nodes() -> Vec<f64> {
-        vec![0.5, 1.]
-    }
-
-    pub fn INDMORK2_weight_graph() -> Vec<Vec<bool>> {
-        vec![vec![true, false], vec![true, false]]
-    }
-
-    pub fn INDMORK2() -> NDMORK {
-        NDMORK::new(
-            Box::new(INDMORK2_weight_function),
-            INDMORK2_nodes(),
-            INDMORK2_weight_graph(),
-        )
-    }
-
-    pub fn ENDMORK3_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_heun_weight_function(N: u32) -> Vec<Vec<f64>> {
         let N = N as i32;
         let Nf = N as f64;
         vec![
@@ -460,11 +420,11 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK3_nodes() -> Vec<f64> {
+    pub fn MO_heun_nodes() -> Vec<f64> {
         vec![0., 1. / 3., 2. / 3., 1.]
     }
 
-    pub fn ENDMORK3_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_heun_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![false, false, false, false],
             vec![true, false, false, false],
@@ -473,63 +433,15 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK3() -> NDMORK {
+    pub fn MO_heun() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK3_weight_function),
-            ENDMORK3_nodes(),
-            ENDMORK3_weight_graph(),
+            Box::new(MO_heun_weight_function),
+            MO_heun_nodes(),
+            MO_heun_weight_graph(),
         )
     }
 
-    pub fn INDMORK3_weight_function(_N: u32) -> Vec<Vec<f64>> {
-        vec![vec![0., 0.], vec![0., 1.], vec![0.5, 0.5]]
-    }
-
-    pub fn INDMORK3_nodes() -> Vec<f64> {
-        vec![0., 1., 1.]
-    }
-
-    pub fn INDMORK3_weight_graph() -> Vec<Vec<bool>> {
-        vec![
-            vec![false, false, false],
-            vec![false, true, false],
-            vec![true, true, false],
-        ]
-    }
-
-    pub fn INDMORK3() -> NDMORK {
-        NDMORK::new(
-            Box::new(INDMORK3_weight_function),
-            INDMORK3_nodes(),
-            INDMORK3_weight_graph(),
-        )
-    }
-
-    pub fn INDMORK3_1_weight_function(_N: u32) -> Vec<Vec<f64>> {
-        vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]]
-    }
-
-    pub fn INDMORK3_1_nodes() -> Vec<f64> {
-        vec![0., 1., 1.]
-    }
-
-    pub fn INDMORK3_1_weight_graph() -> Vec<Vec<bool>> {
-        vec![
-            vec![false, false, false],
-            vec![true, true, false],
-            vec![true, true, false],
-        ]
-    }
-
-    pub fn INDMORK3_1() -> NDMORK {
-        NDMORK::new(
-            Box::new(INDMORK3_1_weight_function),
-            INDMORK3_1_nodes(),
-            INDMORK3_1_weight_graph(),
-        )
-    }
-
-    pub fn ENDMORK4_1_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_RK4_weight_function(N: u32) -> Vec<Vec<f64>> {
         let N = N as i32;
         let Nf = N as f64;
         vec![
@@ -551,11 +463,11 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK4_1_nodes() -> Vec<f64> {
+    pub fn MO_RK4_nodes() -> Vec<f64> {
         vec![0., 0.5, 0.5, 1., 1.]
     }
 
-    pub fn ENDMORK4_1_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_RK4_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![false, false, false, false, false],
             vec![true, false, false, false, false],
@@ -565,15 +477,15 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK4_1() -> NDMORK {
+    pub fn MO_RK4() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK4_1_weight_function),
-            ENDMORK4_1_nodes(),
-            ENDMORK4_1_weight_graph(),
+            Box::new(MO_RK4_weight_function),
+            MO_RK4_nodes(),
+            MO_RK4_weight_graph(),
         )
     }
 
-    pub fn ENDMORK4_2_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_RK4b_weight_function(N: u32) -> Vec<Vec<f64>> {
         let N = N as i32;
         let Nf = N as f64;
         vec![
@@ -600,29 +512,123 @@ pub mod list {
         ]
     }
 
-    pub fn ENDMORK4_2_nodes() -> Vec<f64> {
+    pub fn MO_RK4b_nodes() -> Vec<f64> {
         vec![0., 0.5, 0.5, 1., 1.]
     }
 
-    pub fn ENDMORK4_2_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_RK4b_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![false, false, false, false, false],
             vec![true, false, false, false, false],
             vec![true, true, false, false, false],
             vec![true, true, true, false, false],
-            vec![true, true, true, true, false],
+            vec![true, false, true, true, false],
         ]
     }
 
-    pub fn ENDMORK4_2() -> NDMORK {
+    pub fn MO_RK4b() -> NDMORK {
         NDMORK::new(
-            Box::new(ENDMORK4_2_weight_function),
-            ENDMORK4_2_nodes(),
-            ENDMORK4_2_weight_graph(),
+            Box::new(MO_RK4b_weight_function),
+            MO_RK4b_nodes(),
+            MO_RK4b_weight_graph(),
         )
     }
 
-    pub fn INDMORK4_weight_function(N: u32) -> Vec<Vec<f64>> {
+    pub fn MO_implicit_euler_weight_function(_N: u32) -> Vec<Vec<f64>> {
+        vec![vec![1.], vec![1.]]
+    }
+
+    pub fn MO_implicit_euler_nodes() -> Vec<f64> {
+        vec![1., 1.]
+    }
+
+    pub fn MO_implicit_euler_weight_graph() -> Vec<Vec<bool>> {
+        vec![vec![true, false], vec![true, false]]
+    }
+
+    pub fn MO_implicit_euler() -> NDMORK {
+        NDMORK::new(
+            Box::new(MO_implicit_euler_weight_function),
+            MO_implicit_euler_nodes(),
+            MO_implicit_euler_weight_graph(),
+        )
+    }
+
+    pub fn MO_implicit_midpoint_weight_function(N: u32) -> Vec<Vec<f64>> {
+        vec![vec![2_f64.powi(-(N as i32))], vec![1.]]
+    }
+
+    pub fn MO_implicit_midpoint_nodes() -> Vec<f64> {
+        vec![0.5, 1.]
+    }
+
+    pub fn MO_implicit_midpoint_weight_graph() -> Vec<Vec<bool>> {
+        vec![vec![true, false], vec![true, false]]
+    }
+
+    pub fn MO_implicit_midpoint() -> NDMORK {
+        NDMORK::new(
+            Box::new(MO_implicit_midpoint_weight_function),
+            MO_implicit_midpoint_nodes(),
+            MO_implicit_midpoint_weight_graph(),
+        )
+    }
+
+    pub fn MO_crank_nicolson_weight_function(_N: u32) -> Vec<Vec<f64>> {
+        vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]]
+    }
+
+    pub fn MO_crank_nicolson_nodes() -> Vec<f64> {
+        vec![0., 1., 1.]
+    }
+
+    pub fn MO_crank_nicolson_weight_graph() -> Vec<Vec<bool>> {
+        vec![
+            vec![false, false, false],
+            vec![true, true, false],
+            vec![true, true, false],
+        ]
+    }
+
+    pub fn MO_crank_nicolson() -> NDMORK {
+        NDMORK::new(
+            Box::new(MO_crank_nicolson_weight_function),
+            MO_crank_nicolson_nodes(),
+            MO_crank_nicolson_weight_graph(),
+        )
+    }
+
+    pub fn MO_CNb_weight_function(N: u32) -> Vec<Vec<f64>> {
+        let Nf = N as f64;
+        let c = (2_f64 / 3_f64).powi(N as i32);
+        vec![
+            vec![0., 0.],
+            vec![c * Nf / (1. + Nf), c / (1. + Nf)],
+            vec![(2. * Nf - 1.) / (2. * (1. + Nf)), 3. / (2. * (1. + Nf))],
+        ]
+    }
+
+    pub fn MO_CNb_nodes() -> Vec<f64> {
+        vec![0., 2. / 3., 1.]
+    }
+
+    pub fn MO_CNb_weight_graph() -> Vec<Vec<bool>> {
+        vec![
+            vec![false, false, false],
+            vec![true, true, false],
+            vec![true, true, false],
+        ]
+    }
+
+    pub fn MO_CNb() -> NDMORK {
+        NDMORK::new(
+            Box::new(MO_CNb_weight_function),
+            MO_CNb_nodes(),
+            MO_CNb_weight_graph(),
+        )
+    }
+
+    pub fn MO_gauss_legendre_weight_function(N: u32) -> Vec<Vec<f64>> {
         let sqrt3 = 3_f64.sqrt();
         let no1 = 0.5 - 3_f64.sqrt() / 6.;
         let no2 = 0.5 + 3_f64.sqrt() / 6.;
@@ -643,11 +649,11 @@ pub mod list {
         ]
     }
 
-    pub fn INDMORK4_nodes() -> Vec<f64> {
+    pub fn MO_gauss_legendre_nodes() -> Vec<f64> {
         vec![0.5 - 3_f64.sqrt() / 6., 0.5 + 3_f64.sqrt() / 6., 1.]
     }
 
-    pub fn INDMORK4_weight_graph() -> Vec<Vec<bool>> {
+    pub fn MO_gauss_legendre_weight_graph() -> Vec<Vec<bool>> {
         vec![
             vec![true, true, false],
             vec![true, true, false],
@@ -655,11 +661,11 @@ pub mod list {
         ]
     }
 
-    pub fn INDMORK4() -> NDMORK {
+    pub fn MO_gauss_legendre() -> NDMORK {
         NDMORK::new(
-            Box::new(INDMORK4_weight_function),
-            INDMORK4_nodes(),
-            INDMORK4_weight_graph(),
+            Box::new(MO_gauss_legendre_weight_function),
+            MO_gauss_legendre_nodes(),
+            MO_gauss_legendre_weight_graph(),
         )
     }
 }

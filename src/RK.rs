@@ -196,79 +196,43 @@ impl Solver for RK {
 pub mod list {
     use super::RK;
 
-    pub fn ERK1_weights() -> Vec<Vec<f64>> {
+    pub fn explicit_euler_weights() -> Vec<Vec<f64>> {
         vec![vec![0.], vec![1.]]
     }
 
-    pub fn ERK1_nodes() -> Vec<f64> {
+    pub fn explicit_euler_nodes() -> Vec<f64> {
         vec![0., 1.]
     }
 
-    pub fn ERK1() -> RK {
-        RK::new(ERK1_weights(), ERK1_nodes())
+    pub fn explicit_euler() -> RK {
+        RK::new(explicit_euler_weights(), explicit_euler_nodes())
     }
 
-    pub fn IRK1_weights() -> Vec<Vec<f64>> {
-        vec![vec![1.], vec![1.]]
-    }
-
-    pub fn IRK1_nodes() -> Vec<f64> {
-        vec![1., 1.]
-    }
-
-    pub fn IRK1() -> RK {
-        RK::new(IRK1_weights(), IRK1_nodes())
-    }
-
-    pub fn ERK2_weights() -> Vec<Vec<f64>> {
+    pub fn explicit_midpoint_weights() -> Vec<Vec<f64>> {
         vec![vec![0., 0.], vec![0.5, 0.], vec![0., 1.]]
     }
 
-    pub fn ERK2_nodes() -> Vec<f64> {
+    pub fn explicit_midpoint_nodes() -> Vec<f64> {
         vec![0., 0.5, 1.]
     }
 
-    pub fn ERK2() -> RK {
-        RK::new(ERK2_weights(), ERK2_nodes())
+    pub fn explicit_midpoint() -> RK {
+        RK::new(explicit_midpoint_weights(), explicit_midpoint_nodes())
     }
 
-    pub fn IRK2_weights() -> Vec<Vec<f64>> {
-        vec![vec![0.5], vec![1.]]
+    pub fn ralston_weights() -> Vec<Vec<f64>> {
+        vec![vec![0., 0.], vec![2. / 3., 0.], vec![1. / 4., 3. / 4.]]
     }
 
-    pub fn IRK2_nodes() -> Vec<f64> {
-        vec![0.5, 1.]
+    pub fn ralston_nodes() -> Vec<f64> {
+        vec![0., 2. / 3., 1.]
     }
 
-    pub fn IRK2() -> RK {
-        RK::new(IRK2_weights(), IRK2_nodes())
+    pub fn ralston() -> RK {
+        RK::new(ralston_weights(), ralston_nodes())
     }
 
-    pub fn IRK3_weights() -> Vec<Vec<f64>> {
-        vec![vec![0., 0.], vec![0., 1.], vec![0.5, 0.5]]
-    }
-
-    pub fn IRK3_nodes() -> Vec<f64> {
-        vec![0., 1., 1.]
-    }
-
-    pub fn IRK3() -> RK {
-        RK::new(IRK3_weights(), IRK3_nodes())
-    }
-
-    pub fn IRK3_1_weights() -> Vec<Vec<f64>> {
-        vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]]
-    }
-
-    pub fn IRK3_1_nodes() -> Vec<f64> {
-        vec![0., 1., 1.]
-    }
-
-    pub fn IRK3_1() -> RK {
-        RK::new(IRK3_1_weights(), IRK3_1_nodes())
-    }
-
-    pub fn ERK3_weights() -> Vec<Vec<f64>> {
+    pub fn heun_weights() -> Vec<Vec<f64>> {
         vec![
             vec![0., 0., 0.],
             vec![1. / 3., 0., 0.],
@@ -277,15 +241,15 @@ pub mod list {
         ]
     }
 
-    pub fn ERK3_nodes() -> Vec<f64> {
+    pub fn heun_nodes() -> Vec<f64> {
         vec![0., 1. / 3., 2. / 3., 1.]
     }
 
-    pub fn ERK3() -> RK {
-        RK::new(ERK3_weights(), ERK3_nodes())
+    pub fn heun() -> RK {
+        RK::new(heun_weights(), heun_nodes())
     }
 
-    pub fn ERK4_1_weights() -> Vec<Vec<f64>> {
+    pub fn RK4_weights() -> Vec<Vec<f64>> {
         {
             vec![
                 vec![0., 0., 0., 0.],
@@ -297,15 +261,15 @@ pub mod list {
         }
     }
 
-    pub fn ERK4_1_nodes() -> Vec<f64> {
+    pub fn RK4_nodes() -> Vec<f64> {
         vec![0., 0.5, 0.5, 1., 1.]
     }
 
-    pub fn ERK4_1() -> RK {
-        RK::new(ERK4_1_weights(), ERK4_1_nodes())
+    pub fn RK4() -> RK {
+        RK::new(RK4_weights(), RK4_nodes())
     }
 
-    pub fn ERK4_2_weights() -> Vec<Vec<f64>> {
+    pub fn RK4b_weights() -> Vec<Vec<f64>> {
         vec![
             vec![0., 0., 0., 0.],
             vec![0.5, 0., 0., 0.],
@@ -315,15 +279,63 @@ pub mod list {
         ]
     }
 
-    pub fn ERK4_2_nodes() -> Vec<f64> {
+    pub fn RK4b_nodes() -> Vec<f64> {
         vec![0., 0.5, 0.5, 1., 1.]
     }
 
-    pub fn ERK4_2() -> RK {
-        RK::new(ERK4_2_weights(), ERK4_2_nodes())
+    pub fn RK4b() -> RK {
+        RK::new(RK4b_weights(), RK4b_nodes())
     }
 
-    pub fn IRK4_weights() -> Vec<Vec<f64>> {
+    pub fn implicit_euler_weights() -> Vec<Vec<f64>> {
+        vec![vec![1.], vec![1.]]
+    }
+
+    pub fn implicit_euler_nodes() -> Vec<f64> {
+        vec![1., 1.]
+    }
+
+    pub fn implicit_euler() -> RK {
+        RK::new(implicit_euler_weights(), implicit_euler_nodes())
+    }
+
+    pub fn implicit_midpoint_weights() -> Vec<Vec<f64>> {
+        vec![vec![0.5], vec![1.]]
+    }
+
+    pub fn implicit_midpoint_nodes() -> Vec<f64> {
+        vec![0.5, 1.]
+    }
+
+    pub fn implicit_midpoint() -> RK {
+        RK::new(implicit_midpoint_weights(), implicit_midpoint_nodes())
+    }
+
+    pub fn crank_nicolson_weights() -> Vec<Vec<f64>> {
+        vec![vec![0., 0.], vec![0.5, 0.5], vec![0.5, 0.5]]
+    }
+
+    pub fn crank_nicolson_nodes() -> Vec<f64> {
+        vec![0., 1., 1.]
+    }
+
+    pub fn crank_nicolson() -> RK {
+        RK::new(crank_nicolson_weights(), crank_nicolson_nodes())
+    }
+
+    pub fn CNb_weights() -> Vec<Vec<f64>> {
+        vec![vec![0., 0.], vec![1. / 3., 1. / 3.], vec![1. / 4., 3. / 4.]]
+    }
+
+    pub fn CNb_nodes() -> Vec<f64> {
+        vec![0., 2. / 3., 1.]
+    }
+
+    pub fn CNb() -> RK {
+        RK::new(CNb_weights(), CNb_nodes())
+    }
+
+    pub fn gauss_legendre_weights() -> Vec<Vec<f64>> {
         let sqrt3 = 3_f64.sqrt();
         vec![
             vec![1. / 4., 1. / 4. - sqrt3 / 6.],
@@ -332,12 +344,12 @@ pub mod list {
         ]
     }
 
-    pub fn IRK4_nodes() -> Vec<f64> {
+    pub fn gauss_legendre_nodes() -> Vec<f64> {
         let sqrt3 = 3_f64.sqrt();
         vec![0.5 - sqrt3 / 6., 0.5 + sqrt3 / 6., 1.]
     }
 
-    pub fn IRK4() -> RK {
-        RK::new(IRK4_weights(), IRK4_nodes())
+    pub fn gauss_legendre() -> RK {
+        RK::new(gauss_legendre_weights(), gauss_legendre_nodes())
     }
 }
