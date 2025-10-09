@@ -1,24 +1,28 @@
+//! Implementation of [GMORK].
+
 use crate::*;
 
+/// [GMORK] implements general multi-order Runge-Kutta methods.
 pub struct GMORK {
-    pub nodes: Vec<f64>,
-    pub main_weights: Vec<Vec<Vec<f64>>>,
+    nodes: Vec<f64>,
+    main_weights: Vec<Vec<Vec<f64>>>,
     main_weights_f: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
-    pub secondary_weights: Vec<Vec<Vec<f64>>>,
+    secondary_weights: Vec<Vec<Vec<f64>>>,
     secondary_weights_f: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
-    pub computation_order: Vec<SCC>,
-    pub s: usize,
+    computation_order: Vec<SCC>,
+    s: usize,
     pub stored_length: usize,
-    pub implicit_ranks: Vec<Vec<bool>>, // [N-1][j]
-    pub factorial: Vec<f64>,
-    pub h_powers: Vec<f64>,
-    pub h: f64,
+    implicit_ranks: Vec<Vec<bool>>, // [N-1][j]
+    factorial: Vec<f64>,
+    h_powers: Vec<f64>,
+    h: f64,
     pub error_fraction: f64,
     pub min_iter: u32,
     pub max_iter: u32,
 }
 
 impl GMORK {
+    /// [new][GMORK::new] creates a new instance of [GMORK].
     pub fn new(
         main_weights_function: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
         secondary_weights_function: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
@@ -61,6 +65,7 @@ impl GMORK {
         }
     }
 
+    /// [set_minimum_length][GMORK::set_minimum_length] ensures the method stores at least the constant necessary for initial value problems of order up to `n`
     pub fn set_minimum_length(
         n: usize,
         s: usize,
@@ -101,7 +106,7 @@ impl GMORK {
         *stored_length = n;
     }
 
-    pub fn add_constant_part(
+    fn add_constant_part(
         J: &Vec<usize>,
         j: usize,
         y: &mut Vec<Vec<Vec<f64>>>,
@@ -127,7 +132,7 @@ impl GMORK {
         }
     }
 
-    pub fn picard_iterations(
+    fn picard_iterations(
         t: f64,
         h: f64,
         y0: &Vec<Vec<f64>>,
@@ -177,6 +182,8 @@ impl GMORK {
             }
         }
     }
+
+    /// [approximate_GMORK][GMORK::approximate_GMORK] is an implementation of the approximation of a method.
     pub fn approximate_GMORK(
         t: f64,
         h: f64,
@@ -268,10 +275,10 @@ impl Solver for GMORK {
                 self.h_powers[N] = h.powi(N as i32)
             }
         }
-        // calculate difference threshold for picard iterations
+        // computes difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
         for k in 0..y0.len() {
-            // verify the length of the method is enough
+            // verifies the length of the method is enough
             if y0[k].len() > self.stored_length {
                 GMORK::set_minimum_length(
                     y0[k].len(),

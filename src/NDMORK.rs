@@ -1,22 +1,27 @@
+//! Implementation of [NDMORK] and a list of such methods.
+
 use crate::*;
+
+/// [NDMORK] implements general multi-order Runge-Kutta methods.
 pub struct NDMORK {
-    pub s: usize,
+    s: usize,
     pub stored_length: usize,
-    pub nodes: Vec<f64>,
-    pub weights: Vec<Vec<Vec<f64>>>,
-    pub weights_function: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
-    pub factorial: Vec<f64>,
-    pub coefficients: Vec<Vec<f64>>,
-    pub h: f64,
-    pub h_powers: Vec<f64>,
-    pub computation_order: Vec<SCC>,
-    pub implicit_ranks: Vec<Vec<bool>>, // [N-1][j]
+    nodes: Vec<f64>,
+    weights: Vec<Vec<Vec<f64>>>,
+    weights_function: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
+    factorial: Vec<f64>,
+    coefficients: Vec<Vec<f64>>,
+    h: f64,
+    h_powers: Vec<f64>,
+    computation_order: Vec<SCC>,
+    implicit_ranks: Vec<Vec<bool>>, // [N-1][j]
     pub error_fraction: f64,
     pub min_iter: u32,
     pub max_iter: u32,
 }
 
 impl NDMORK {
+    /// [new][NDMORK::new] creates a new instance of [NDMORK].
     pub fn new(
         weights_function: Box<dyn Fn(u32) -> Vec<Vec<f64>>>,
         nodes: Vec<f64>,
@@ -56,6 +61,7 @@ impl NDMORK {
         }
     }
 
+    /// [set_minimum_length][NDMORK::set_minimum_length] ensures the method stores at least the constant necessary for initial value problems of order up to `n`
     pub fn set_minimum_length(
         h_powers: &mut Vec<f64>,
         weights_function: &dyn Fn(u32) -> Vec<Vec<f64>>,
@@ -178,6 +184,7 @@ impl NDMORK {
         }
     }
 
+    /// [approximate_ND][NDMORK::approximate_ND] is an implementation of the approximation of a method.
     pub fn approximate_ND(
         t: f64,
         h: f64,
@@ -274,8 +281,10 @@ impl Solver for NDMORK {
                 self.h_powers[N] = h.powi(N as i32)
             }
         }
+        // computes difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
         for k in 0..y0.len() {
+            // verifies the length of the method is enough
             if y0[k].len() > self.stored_length {
                 NDMORK::set_minimum_length(
                     &mut self.h_powers,
@@ -320,6 +329,8 @@ impl Solver for NDMORK {
 }
 
 pub mod list {
+    //! A list of node-determined multi-order Runge-Kutta methods.
+
     use super::NDMORK;
 
     pub fn MO_explicit_euler_weight_function(_N: u32) -> Vec<Vec<f64>> {

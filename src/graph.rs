@@ -1,3 +1,5 @@
+
+/// [NodeState] represents the state of a node in gabow's algorithm.
 #[derive(Debug, Clone, PartialEq)]
 enum NodeState {
     NotVisited,
@@ -5,6 +7,7 @@ enum NodeState {
     InSCC(usize),
 }
 
+/// [SCC()] is an implementation of Gabow's algorithm, an algorithm which detects the strongly connected components of a digraph.
 pub fn SCC(graph: &Vec<Vec<bool>>) -> Vec<Vec<usize>> {
     #[allow(non_snake_case)]
     let mut S: Vec<usize> = Vec::new();
@@ -71,6 +74,7 @@ pub fn SCC(graph: &Vec<Vec<bool>>) -> Vec<Vec<usize>> {
     scc
 }
 
+/// [contraction] takes a digraph and a partition of the nodes and outpus the contracted graph, without the loops.
 pub fn contraction(graph: &Vec<Vec<bool>>, partition: &Vec<Vec<usize>>) -> Vec<Vec<bool>> {
     let s = graph.len();
     let p = partition.len();
@@ -95,6 +99,7 @@ pub fn contraction(graph: &Vec<Vec<bool>>, partition: &Vec<Vec<usize>>) -> Vec<V
     contracted_graph
 }
 
+/// [topological_sort] takes a digraph with no non-empty walk and outputs a relabeling which topologically sorts the digraph.
 pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
     let mut dag = dag.clone();
     let s = dag.len();
@@ -115,6 +120,7 @@ pub fn topological_sort(dag: &Vec<Vec<bool>>) -> Vec<usize> {
     order
 }
 
+/// [priority] takes the cost of each node of a graph and outputs the priority of each node.
 pub fn priority(cost: &Vec<u32>, graph: &Vec<Vec<bool>>) -> Vec<u32> {
     let s = graph.len();
     let mut current_priority: Vec<u32> = (0..s)

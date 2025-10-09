@@ -1,5 +1,8 @@
+//! Implementation of [RK] and a list of such methods.
+
 use crate::*;
 
+/// [RK] implements general multi-order Runge-Kutta methods.
 pub struct RK {
     pub s: usize,
     pub nodes: Vec<f64>,
@@ -11,6 +14,7 @@ pub struct RK {
 }
 
 impl RK {
+    /// [new][RK::new] creates a new instance of [GMORK].
     pub fn new(weights: Vec<Vec<f64>>, nodes: Vec<f64>) -> Self {
         let s = weights.len() - 1;
         let weight_graph = (0..=s)
@@ -39,7 +43,7 @@ impl RK {
         }
     }
 
-    pub fn add_constant_part(
+    fn add_constant_part(
         J: &Vec<usize>,
         j: usize,
         y: &mut Vec<Vec<Vec<f64>>>,
@@ -65,7 +69,7 @@ impl RK {
         }
     }
 
-    pub fn picard_iterations(
+    fn picard_iterations(
         threshold: f64,
         min_iter: u32,
         max_iter: u32,
@@ -116,6 +120,7 @@ impl RK {
         }
     }
 
+    /// [approximate_RK][RK::approximate_RK] is an implementation of the approximation of a method.
     pub fn approximate_RK(
         t: f64,
         h: f64,
@@ -167,7 +172,7 @@ impl Solver for RK {
         if h == 0. {
             return y0.clone();
         }
-        // calculate difference threshold for picard iterations
+        // computes difference threshold for picard iterations
         let mut threshold = y0[0][0].abs();
         for k in 0..y0.len() {
             for N in 0..y0[k].len() {
@@ -194,6 +199,8 @@ impl Solver for RK {
 }
 
 pub mod list {
+    //! A list of node-determined multi-order Runge-Kutta methods.
+
     use super::RK;
 
     pub fn explicit_euler_weights() -> Vec<Vec<f64>> {
